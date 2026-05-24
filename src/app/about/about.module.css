@@ -1,118 +1,33 @@
-.homeContainer {
-  background-color: var(--bg-body);
+.hero {
+    background: var(--bg-surface);
+    padding: var(--space-4xl) 0 var(--space-3xl) 0;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    border-bottom: 2px solid var(--border-subtle);
 }
 
-/* Kurumlar Grid */
-.kurumlarGrid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-lg);
+.heroContent {
+    position: relative;
+    z-index: 1;
+    max-width: 800px;
+    margin: 0 auto;
 }
 
-@media (max-width: 1024px) {
-  .kurumlarGrid {
-    grid-template-columns: repeat(2, 1fr);
-  }
+.heroTitle {
+    font-size: var(--text-5xl);
+    font-weight: 800;
+    margin-bottom: var(--space-md);
+    color: var(--color-primary);
+    letter-spacing: -0.02em;
 }
 
-@media (max-width: 640px) {
-  .kurumlarGrid {
-    grid-template-columns: 1fr;
-  }
+.heroLead {
+    font-size: var(--text-xl);
+    color: var(--text-secondary);
+    line-height: 1.6;
 }
 
-/* Featured Slider Architecture */
-.sliderWrapper {
-  position: relative;
-  width: 100%;
-}
-
-.featuredGrid {
-  display: flex;
-  gap: var(--space-lg);
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  scroll-behavior: smooth;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none; /* Firefox */
-  padding: 8px 4px 20px 4px; /* Ensure shadows aren't clipped */
-}
-
-.featuredGrid::-webkit-scrollbar {
-  display: none; /* Chrome, Safari, Opera */
-}
-
-.featuredGrid > * {
-  flex: 0 0 calc(33.333% - (var(--space-lg) * 2 / 3));
-  scroll-snap-align: start;
-}
-
-@media (max-width: 1024px) {
-  .featuredGrid > * {
-    flex: 0 0 calc(50% - (var(--space-lg) * 1 / 2));
-  }
-}
-
-@media (max-width: 768px) {
-  .featuredGrid > * {
-    flex: 0 0 100%;
-  }
-}
-
-/* Glassmorphic / Neo-Brutalist Navigation Arrows */
-.sliderArrow {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: white;
-  border: 2px solid var(--color-primary);
-  box-shadow: 4px 4px 0px 0px var(--color-primary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 10;
-  color: var(--color-primary);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  user-select: none;
-}
-
-.sliderArrow:hover {
-  transform: translateY(-50%) translate(-2px, -2px);
-  box-shadow: 6px 6px 0px 0px var(--color-accent);
-  border-color: var(--color-accent);
-  color: var(--color-accent);
-}
-
-.sliderArrow:active {
-  transform: translateY(-50%) translate(0, 0);
-  box-shadow: 2px 2px 0px 0px var(--color-accent);
-}
-
-.arrowLeft {
-  left: -24px;
-}
-
-.arrowRight {
-  right: -24px;
-}
-
-@media (max-width: 1024px) {
-  .sliderArrow {
-    display: none; /* Rely on native swiping/touch scroll on mobile & tablets */
-  }
-  .featuredGrid {
-    padding-bottom: 8px;
-  }
-}
-
-
-/* =======================================================
-   Custom Modular Layout Section Styles (Homepage Yapboz)
-   ======================================================= */
 .section {
     padding: var(--space-3xl) 0;
 }
@@ -126,6 +41,125 @@
     position: relative;
 }
 
+/* Stats */
+.stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-lg);
+}
+
+.statItem {
+    background: white;
+    padding: var(--space-xl);
+    border-radius: var(--radius-md);
+    text-align: center;
+    border: 2px solid var(--color-primary);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 4px 4px 0px 0px var(--color-primary);
+    position: relative;
+}
+
+.statItem:hover {
+    transform: translate(-3px, -3px);
+    box-shadow: 7px 7px 0px 0px var(--color-accent);
+}
+
+.statNumber {
+    display: block;
+    font-size: var(--text-4xl);
+    font-weight: 800;
+    color: var(--color-accent);
+    margin-bottom: var(--space-xs);
+}
+
+.statLabel {
+    color: var(--text-main);
+    font-weight: 600;
+}
+
+/* Mission */
+.missionGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-3xl);
+    align-items: center;
+}
+
+.missionContent h3 {
+    margin-bottom: var(--space-md);
+    font-size: var(--text-2xl);
+    font-weight: 700;
+}
+
+.missionContent p {
+    margin-bottom: var(--space-lg);
+    line-height: 1.8;
+}
+
+.missionImage {
+    position: relative;
+    aspect-ratio: 4/3;
+    background: white;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--color-primary);
+    box-shadow: 5px 5px 0px 0px var(--color-primary);
+}
+
+/* Team */
+.teamGrid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-lg);
+}
+
+.member {
+    background: white;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    border: 2px solid var(--color-primary);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 4px 4px 0px 0px var(--color-primary);
+}
+
+.member:hover {
+    transform: translate(-3px, -3px);
+    box-shadow: 7px 7px 0px 0px var(--color-accent);
+}
+
+.memberImage {
+    height: 250px;
+    background: var(--bg-surface-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    border-bottom: 2px solid var(--color-primary);
+}
+
+.memberContent {
+    padding: var(--space-lg);
+    text-align: center;
+}
+
+.memberName {
+    display: block;
+    font-weight: 700;
+    color: var(--text-main);
+    margin-bottom: 4px;
+}
+
+.memberRole {
+    display: block;
+    font-size: var(--text-sm);
+    color: var(--color-accent);
+    font-weight: 600;
+}
+
+/* Responsive & Dynamic Custom Layouts */
 .customCardGrid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -408,39 +442,59 @@
     margin-bottom: var(--space-xs);
 }
 
-/* Responsive Media Queries for Custom Sections */
+/* Responsive */
 @media (max-width: 1024px) {
-  .customCardGrid {
-      grid-template-columns: repeat(2, 1fr);
-  }
+    .stats,
+    .teamGrid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .customCardGrid {
+        grid-template-columns: repeat(2, 1fr);
+    }
 }
 
 @media (max-width: 768px) {
-  .splitLayout {
-      grid-template-columns: 1fr;
-      gap: var(--space-xl);
-  }
-  
-  .layoutReverse > .splitTextCol {
-      order: 1;
-  }
-  
-  .layoutReverse > .splitMediaCol {
-      order: 2;
-  }
-  
-  .splitTitle {
-      font-size: var(--text-2xl);
-  }
-  
-  .dynamicMediaSphere {
-      width: 200px;
-      height: 200px;
-  }
+    .missionGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .heroTitle {
+        font-size: var(--text-3xl);
+    }
+    
+    .splitLayout {
+        grid-template-columns: 1fr;
+        gap: var(--space-xl);
+    }
+    
+    .layoutReverse > .splitTextCol {
+        order: 1;
+    }
+    
+    .layoutReverse > .splitMediaCol {
+        order: 2;
+    }
+    
+    .splitTitle {
+        font-size: var(--text-2xl);
+    }
+    
+    .dynamicMediaSphere {
+        width: 200px;
+        height: 200px;
+    }
 }
 
 @media (max-width: 640px) {
-  .customCardGrid {
-      grid-template-columns: 1fr;
-  }
+    .stats {
+        grid-template-columns: 1fr;
+    }
+
+    .teamGrid {
+        grid-template-columns: 1fr;
+    }
+    
+    .customCardGrid {
+        grid-template-columns: 1fr;
+    }
 }

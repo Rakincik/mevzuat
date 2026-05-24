@@ -1,0 +1,61 @@
+.card {
+    position: relative;
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    transition: border-color var(--transition-smooth);
+}
+
+.content {
+    position: relative;
+    z-index: 1;
+}
+
+.glowBorder {
+    position: absolute;
+    inset: -1px;
+    background: var(--gradient-neon);
+    border-radius: inherit;
+    opacity: 0;
+    transition: opacity var(--transition-smooth);
+    z-index: -1;
+}
+
+.card:hover {
+    border-color: transparent;
+}
+
+.card:hover .glowBorder {
+    opacity: 1;
+}
+
+/* Variants */
+.elevated {
+    background: var(--bg-card);
+    box-shadow: var(--shadow-elevated);
+}
+
+.neon {
+    border-color: var(--neon-cyan);
+    box-shadow: var(--glow-subtle);
+}
+
+/* Glow Colors */
+.glow-cyan .glowBorder {
+    background: linear-gradient(135deg, var(--neon-cyan), var(--neon-magenta));
+}
+
+.glow-magenta .glowBorder {
+    background: linear-gradient(135deg, var(--neon-magenta), var(--neon-purple));
+}
+
+.glow-gold .glowBorder {
+    background: linear-gradient(135deg, var(--neon-gold), var(--neon-orange));
+}
+
+.glow-green .glowBorder {
+    background: linear-gradient(135deg, var(--neon-green), var(--neon-cyan));
+}

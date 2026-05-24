@@ -1,0 +1,95 @@
+.authContainer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(100vh - 140px);
+    /* Adjust for header/footer */
+    background-color: var(--bg-surface-secondary);
+    padding: var(--space-xl) var(--space-md);
+}
+
+.authCard {
+    width: 100%;
+    max-width: 450px;
+    background-color: var(--bg-surface);
+    padding: var(--space-2xl);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--border-subtle);
+}
+
+.logoWrapper {
+    text-align: center;
+    margin-bottom: var(--space-xl);
+}
+
+.logoIcon {
+    color: var(--color-accent);
+    margin-bottom: var(--space-md);
+}
+
+.authCard h2 {
+    font-size: var(--text-2xl);
+    margin-bottom: var(--space-xs);
+    color: var(--text-main);
+}
+
+.authCard p {
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+}
+
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+}
+
+.formGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.formGroup label {
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+    color: var(--text-main);
+}
+
+.row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-md);
+}
+
+.formActions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: var(--text-sm);
+}
+
+.checkbox {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+}
+
+.link {
+    color: var(--color-accent);
+    text-decoration: none;
+    font-weight: var(--font-medium);
+}
+
+.link:hover {
+    text-decoration: underline;
+}
+
+.footer {
+    margin-top: var(--space-xl);
+    text-align: center;
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+}

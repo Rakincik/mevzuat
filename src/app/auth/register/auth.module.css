@@ -1,0 +1,2 @@
+/* Proxy to login css to avoid duplication */
+@import '../login/auth.module.css';

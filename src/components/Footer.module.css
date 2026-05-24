@@ -1,0 +1,212 @@
+.footer {
+    position: relative;
+    background: #0F172A;
+    border-top: 1px solid #1E293B;
+    padding: var(--space-4xl) 0 var(--space-xl);
+    overflow: hidden;
+}
+
+.footerGlow {
+    display: none;
+}
+
+.footerGrid {
+    display: grid;
+    grid-template-columns: 1.5fr 2fr;
+    gap: var(--space-4xl);
+    margin-bottom: var(--space-3xl);
+}
+
+/* Brand */
+.footerBrand {
+    max-width: 300px;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    font-size: var(--text-xl);
+    font-weight: var(--font-bold);
+    text-decoration: none;
+    margin-bottom: var(--space-md);
+}
+
+.logoIcon {
+    font-size: 1.5rem;
+}
+
+.logoText {
+    color: var(--color-primary);
+}
+
+.brandDesc {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+    line-height: 1.7;
+    margin-bottom: var(--space-lg);
+}
+
+.socialLinks {
+    display: flex;
+    gap: var(--space-sm);
+}
+
+.socialLink {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    font-size: 1.2rem;
+    text-decoration: none;
+    transition: all var(--transition-fast);
+}
+
+.socialLink:hover {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+}
+
+/* Links */
+.footerLinks {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-xl);
+}
+
+.linkGroup ul {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+}
+
+.linkGroupTitle {
+    font-size: var(--text-sm);
+    font-weight: var(--font-bold);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #FFFFFF;
+    margin-bottom: var(--space-md);
+}
+
+.footerLink {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: all var(--transition-fast);
+    display: inline-block;
+}
+
+.footerLink:hover {
+    color: var(--color-accent);
+    transform: translateX(4px);
+}
+
+/* Bottom Bar */
+.footerBottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: var(--space-xl);
+    border-top: 1px solid var(--glass-border);
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+}
+
+.bottomLinks {
+    display: flex;
+    gap: var(--space-lg);
+}
+
+.bottomLinks a {
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color var(--transition-fast);
+}
+
+.bottomLinks a:hover {
+    color: var(--neon-cyan);
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+    .footerGrid {
+        grid-template-columns: 1fr;
+        gap: var(--space-2xl);
+    }
+
+    .footerBrand {
+        max-width: none;
+        text-align: center;
+    }
+
+    .socialLinks {
+        justify-content: center;
+    }
+
+    .footerLinks {
+        grid-template-columns: repeat(3, 1fr);
+        text-align: center;
+    }
+}
+
+@media (max-width: 600px) {
+    .footerLinks {
+        grid-template-columns: 1fr;
+        gap: var(--space-xl);
+    }
+
+    .footerBottom {
+        flex-direction: column;
+        gap: var(--space-md);
+        text-align: center;
+    }
+}
+
+.signature {
+    text-align: center;
+    padding-top: var(--space-lg);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    opacity: 0.7;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    letter-spacing: 0.5px;
+}
+
+.signatureLink {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-main);
+    font-weight: 700;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    padding: 4px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    /* Glass effect */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: full;
+    /* Rounded pills */
+    border-radius: 999px;
+}
+
+.signatureLink:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    /* Lift effect */
+}
+
+.vectorLogo {
+    height: 24px;
+    width: auto;
+    display: block;
+}

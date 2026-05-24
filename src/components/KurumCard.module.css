@@ -1,0 +1,236 @@
+.card {
+    background: var(--bg-surface);
+    border-radius: var(--radius-md);
+    border: 2px solid var(--color-primary);
+    overflow: hidden;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    box-shadow: 4px 4px 0px 0px var(--color-primary);
+}
+
+.cardBorderGlow {
+    display: none;
+}
+
+.card:hover {
+    transform: translate(-4px, -4px);
+    box-shadow: 8px 8px 0px 0px var(--color-accent);
+}
+
+.cardLink {
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.cardInner {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+/* ==========================================
+   Card Header (Official Seal Shield)
+   ========================================== */
+.cardHeader {
+    position: relative;
+    height: 180px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background-size: cover;
+    background-position: center;
+    border-bottom: 2px solid var(--color-primary);
+}
+
+.headerPattern {
+    display: none;
+}
+
+/* Glassmorphic Shield hosting the seal */
+.emblemShield {
+    width: 114px;
+    height: 114px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.25),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 2;
+}
+
+.emblem {
+    transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.card:hover .emblemShield {
+    transform: scale(1.08) rotate(3deg);
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 
+        0 12px 38px rgba(0, 0, 0, 0.35),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+/* ==========================================
+   Card Body
+   ========================================== */
+.body {
+    padding: var(--space-lg);
+    padding-bottom: var(--space-xs);
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.category {
+    font-size: var(--text-xs);
+    font-weight: var(--font-bold);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    transition: color 0.3s ease;
+}
+
+.title {
+    font-size: var(--text-lg);
+    font-weight: var(--font-extrabold);
+    color: var(--text-main);
+    line-height: 1.35;
+    margin: 4px 0 0 0;
+    transition: color 0.3s ease;
+}
+
+.description {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-top: 8px;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    flex-grow: 1;
+}
+
+/* ==========================================
+   Card Footer
+   ========================================== */
+.footer {
+    padding: var(--space-lg);
+    padding-top: var(--space-sm);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: transparent;
+    border-top: 1px solid var(--border-subtle);
+    margin-top: var(--space-md);
+}
+
+.badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: var(--text-xs);
+    font-weight: var(--font-semibold);
+    color: var(--text-secondary);
+    background: var(--bg-surface-secondary);
+    border: 1px solid var(--border-subtle);
+    padding: 6px 12px;
+    border-radius: var(--radius-full);
+    transition: all 0.3s ease;
+}
+
+.card:hover .badge {
+    border-color: var(--badge-accent);
+    color: var(--badge-accent);
+    background: rgba(15, 23, 42, 0.02);
+}
+
+.ctaArea {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ctaText {
+    font-size: var(--text-sm);
+    font-weight: var(--font-bold);
+    color: var(--text-muted);
+    transition: color 0.3s ease;
+}
+
+.card:hover .ctaText {
+    color: var(--color-primary);
+}
+
+.ctaArrow {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-surface-secondary);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.card:hover .ctaArrow {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: white;
+    transform: translateX(4px);
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2);
+}
+
+/* ==========================================
+   Responsive Settings
+   ========================================== */
+@media (max-width: 640px) {
+    .cardHeader {
+        height: 150px;
+    }
+
+    .emblemShield {
+        width: 100px;
+        height: 100px;
+    }
+
+    .body {
+        padding: var(--space-md);
+        padding-bottom: 0;
+    }
+
+    .title {
+        font-size: var(--text-base);
+    }
+
+    .description {
+        -webkit-line-clamp: 2;
+        margin-top: 6px;
+    }
+
+    .footer {
+        padding: var(--space-md);
+        margin-top: var(--space-sm);
+    }
+
+    .ctaText {
+        display: none;
+    }
+}

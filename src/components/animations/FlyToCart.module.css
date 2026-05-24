@@ -1,0 +1,48 @@
+.flyingItem {
+    position: fixed;
+    width: 60px;
+    height: 60px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--neon-cyan);
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    box-shadow: var(--glow-cyan);
+    pointer-events: none;
+}
+
+.thumbnail {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: inherit;
+}
+
+.placeholder {
+    font-size: 2rem;
+}
+
+.trail {
+    position: absolute;
+    left: -100px;
+    top: 50%;
+    width: 100px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--neon-cyan));
+    transform-origin: right center;
+    transform: translateY(-50%);
+}
+
+.particle {
+    position: fixed;
+    width: 8px;
+    height: 8px;
+    background: var(--neon-cyan);
+    border-radius: 50%;
+    z-index: 10001;
+    box-shadow: var(--glow-cyan);
+    pointer-events: none;
+}

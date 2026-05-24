@@ -1,0 +1,74 @@
+.cursor {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 8px;
+    height: 8px;
+    background: var(--neon-cyan);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 99999;
+    transform: translate(-50%, -50%);
+    box-shadow: var(--glow-cyan);
+    transition: width 0.2s, height 0.2s, background 0.2s;
+}
+
+.cursor.hovering {
+    width: 4px;
+    height: 4px;
+    background: var(--neon-magenta);
+}
+
+.cursor.clicking {
+    transform: translate(-50%, -50%) scale(0.5);
+}
+
+.cursorRing {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--neon-cyan);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 99998;
+    transform: translate(-50%, -50%);
+    transition: width 0.3s, height 0.3s, border-color 0.3s, background 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ringHovering {
+    width: 80px;
+    height: 80px;
+    border-color: var(--neon-magenta);
+    background: rgba(255, 0, 234, 0.1);
+    backdrop-filter: blur(4px);
+}
+
+.cursorText {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    white-space: nowrap;
+}
+
+/* Hide default cursor on desktop */
+@media (pointer: fine) {
+    .cursorContainer {
+        display: block;
+    }
+}
+
+/* Show default cursor on touch devices */
+@media (pointer: coarse) {
+
+    .cursor,
+    .cursorRing {
+        display: none;
+    }
+}
