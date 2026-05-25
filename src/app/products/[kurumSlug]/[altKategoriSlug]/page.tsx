@@ -10,7 +10,7 @@ import styles from './page.module.css'
  
 export default function SubcategoryPage() {
     const { kurumSlug, altKategoriSlug } = useParams<{ kurumSlug: string; altKategoriSlug: string }>()
-    const { products: allDynamicProducts } = useApp()
+    const { products: allDynamicProducts, altKategoriler } = useApp()
     
     const kurum = getKurumBySlug(kurumSlug)
     if (!kurum) {
@@ -25,7 +25,25 @@ export default function SubcategoryPage() {
         notFound()
     }
 
-    const altKategoriName = products[0].altKategoriName
+    // Dynamically retrieve the correct alt category name matching the active slug
+    const currentAltCat = altKategoriler.find(c => c.slug === altKategoriSlug)
+    const firstProduct = products[0]
+    let altKategoriName = 'Kategori'
+
+    if (currentAltCat) {
+        altKategoriName = currentAltCat.name
+    } else if (firstProduct) {
+        if (firstProduct.altKategoriSlugs && firstProduct.altKategoriNames) {
+            const slugIdx = firstProduct.altKategoriSlugs.indexOf(altKategoriSlug)
+            if (slugIdx > -1 && firstProduct.altKategoriNames[slugIdx]) {
+                altKategoriName = firstProduct.altKategoriNames[slugIdx]
+            } else {
+                altKategoriName = firstProduct.altKategoriName
+            }
+        } else {
+            altKategoriName = firstProduct.altKategoriName
+        }
+    }
 
     return (
         <div className="container section">

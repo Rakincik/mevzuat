@@ -86,16 +86,25 @@ export default function DersDetailPage() {
     const hasDiscount = product.salePrice && product.salePrice < product.price
     const discountPercent = hasDiscount ? Math.round((1 - product.salePrice! / product.price) * 100) : 0
 
-    return (
-        <div className="container section">
-            {/* Three-Tier Breadcrumbs */}
-            <div className={styles.breadcrumbs}>
-                <Link href="/">Ana Sayfa</Link> /{' '}
-                <Link href="/products">Kurumlar</Link> /{' '}
-                <Link href={`/products/${kurumSlug}`}>{kurum.name}</Link> /{' '}
-                <Link href={`/products/${kurumSlug}/${altKategoriSlug}`}>{product.altKategoriName}</Link> /{' '}
-                <span>{product.name}</span>
-            </div>
+        // Find the correct subcategory name matching the URL parameter 'altKategoriSlug'
+        let activeAltKategoriName = product.altKategoriName
+        if (product.altKategoriSlugs && product.altKategoriNames) {
+            const slugIdx = product.altKategoriSlugs.indexOf(altKategoriSlug)
+            if (slugIdx > -1 && product.altKategoriNames[slugIdx]) {
+                activeAltKategoriName = product.altKategoriNames[slugIdx]
+            }
+        }
+
+        return (
+            <div className="container section">
+                {/* Three-Tier Breadcrumbs */}
+                <div className={styles.breadcrumbs}>
+                    <Link href="/">Ana Sayfa</Link> /{' '}
+                    <Link href="/products">Kurumlar</Link> /{' '}
+                    <Link href={`/products/${kurumSlug}`}>{kurum.name}</Link> /{' '}
+                    <Link href={`/products/${kurumSlug}/${altKategoriSlug}`}>{activeAltKategoriName}</Link> /{' '}
+                    <span>{product.name}</span>
+                </div>
 
             <div className={styles.grid}>
                 {/* Gallery */}

@@ -431,332 +431,360 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         })
     }
 
+    const saveState = async (key: string, value: any) => {
+        try {
+            if (typeof window !== 'undefined') {
+                localStorage.setItem(key, JSON.stringify(value))
+                await fetch('/api/store', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key, value })
+                })
+            }
+        } catch (e: any) {
+            console.error(`Error saving ${key} to central database:`, e)
+        }
+    }
+
     useEffect(() => {
         if (typeof window !== 'undefined') {
-            // Load Products
-            const savedProducts = localStorage.getItem('app_products')
-            let loadedProducts = initialProducts
-            if (savedProducts) {
-                try { loadedProducts = JSON.parse(savedProducts) } catch(e){}
-            } else {
-                localStorage.setItem('app_products', JSON.stringify(initialProducts))
-            }
-            
-            // Auto-heal missing order properties based on their initial index
-            const healedProducts = loadedProducts.map((p, idx) => ({
-                ...p,
-                order: p.order !== undefined ? p.order : (idx + 1)
-            }))
-            
-            const sortedAndResequenced = resequenceProducts(healedProducts)
-            setProducts(sortedAndResequenced)
-            localStorage.setItem('app_products', JSON.stringify(sortedAndResequenced))
+            // 1. Immediately load local values for ultra-fast startup (Offline First / Snappy UX)
+            const loadLocalData = () => {
+                const savedProducts = localStorage.getItem('app_products')
+                let loadedProducts = initialProducts
+                if (savedProducts) {
+                    try { loadedProducts = JSON.parse(savedProducts) } catch (e) {}
+                }
+                const healedProducts = loadedProducts.map((p, idx) => ({
+                    ...p,
+                    order: p.order !== undefined ? p.order : (idx + 1)
+                }))
+                const sortedAndResequenced = resequenceProducts(healedProducts)
+                setProducts(sortedAndResequenced)
 
-            // Load Institutions
-            const savedKurumlar = localStorage.getItem('app_kurumlar')
-            let loadedKurumlar = initialKurumlar
-            if (savedKurumlar) {
-                try { loadedKurumlar = JSON.parse(savedKurumlar) } catch(e){}
-            } else {
-                localStorage.setItem('app_kurumlar', JSON.stringify(initialKurumlar))
-            }
-            setKurumlar(loadedKurumlar)
+                const savedKurumlar = localStorage.getItem('app_kurumlar')
+                let loadedKurumlar = initialKurumlar
+                if (savedKurumlar) {
+                    try { loadedKurumlar = JSON.parse(savedKurumlar) } catch (e) {}
+                }
+                setKurumlar(loadedKurumlar)
 
-            // Load Settings
-            const savedSettings = localStorage.getItem('app_settings')
-            let loadedSettings = defaultSettings
-            if (savedSettings) {
-                try { loadedSettings = JSON.parse(savedSettings) } catch(e){}
-            } else {
-                localStorage.setItem('app_settings', JSON.stringify(defaultSettings))
-            }
-            setSettings(loadedSettings)
+                const savedSettings = localStorage.getItem('app_settings')
+                let loadedSettings = defaultSettings
+                if (savedSettings) {
+                    try { loadedSettings = JSON.parse(savedSettings) } catch (e) {}
+                }
+                setSettings(loadedSettings)
 
-            // Load Featured Ids
-            const savedFeatured = localStorage.getItem('featured_product_ids')
-            let loadedFeatured = initialProducts.filter(p => p.isFeatured).map(p => p.id)
-            if (savedFeatured) {
-                try { loadedFeatured = JSON.parse(savedFeatured) } catch(e){}
-            } else {
-                localStorage.setItem('featured_product_ids', JSON.stringify(loadedFeatured))
-            }
-            setFeaturedIds(loadedFeatured)
+                const savedFeatured = localStorage.getItem('featured_product_ids')
+                let loadedFeatured = initialProducts.filter(p => p.isFeatured).map(p => p.id)
+                if (savedFeatured) {
+                    try { loadedFeatured = JSON.parse(savedFeatured) } catch (e) {}
+                }
+                setFeaturedIds(loadedFeatured)
 
-            // Load Orders
-            const savedOrders = localStorage.getItem('app_orders')
-            let loadedOrders: Order[] = []
-            if (savedOrders) {
-                try { loadedOrders = JSON.parse(savedOrders) } catch(e){}
-            } else {
-                localStorage.setItem('app_orders', JSON.stringify([]))
-            }
-            setOrders(loadedOrders)
+                const savedOrders = localStorage.getItem('app_orders')
+                let loadedOrders: Order[] = []
+                if (savedOrders) {
+                    try { loadedOrders = JSON.parse(savedOrders) } catch (e) {}
+                }
+                setOrders(loadedOrders)
 
-            // Load Coupons
-            const savedCoupons = localStorage.getItem('app_coupons')
-            let loadedCoupons = defaultCoupons
-            if (savedCoupons) {
-                try { 
-                    const parsed = JSON.parse(savedCoupons)
-                    loadedCoupons = parsed.map((c: any) => ({
-                        id: c.id,
-                        code: c.code,
-                        discountType: c.discountType || 'percentage',
-                        discountValue: c.discountValue !== undefined ? c.discountValue : (c.discountRate ? c.discountRate * 100 : 0),
-                        maxUses: c.maxUses,
-                        usedCount: c.usedCount || 0,
-                        description: c.description
-                    }))
-                } catch(e){}
-            } else {
-                localStorage.setItem('app_coupons', JSON.stringify(defaultCoupons))
+                const savedCoupons = localStorage.getItem('app_coupons')
+                let loadedCoupons = defaultCoupons
+                if (savedCoupons) {
+                    try { loadedCoupons = JSON.parse(savedCoupons) } catch (e) {}
+                }
+                setCoupons(loadedCoupons)
+
+                const savedPages = localStorage.getItem('app_pages')
+                let loadedPages = defaultPages
+                if (savedPages) {
+                    try { loadedPages = JSON.parse(savedPages) } catch (e) {}
+                }
+                setPages(loadedPages)
+
+                const savedAltKategoriler = localStorage.getItem('app_alt_kategoriler')
+                let loadedAltKategoriler: AltKategori[] = []
+                if (savedAltKategoriler) {
+                    try { loadedAltKategoriler = JSON.parse(savedAltKategoriler) } catch (e) {}
+                }
+                setAltKategoriler(loadedAltKategoriler)
             }
-            setCoupons(loadedCoupons)
-            
-            // Load Pages
-            const savedPages = localStorage.getItem('app_pages')
-            let loadedPages = defaultPages
-            if (savedPages) {
-                try { 
-                    loadedPages = JSON.parse(savedPages)
-                    // Auto-heal local storage: If 'home' page is missing, inject it from defaultPages
-                    if (Array.isArray(loadedPages) && !loadedPages.some(p => p.id === 'home')) {
-                        const defaultHome = defaultPages.find(p => p.id === 'home')
-                        if (defaultHome) {
-                            loadedPages = [defaultHome, ...loadedPages]
-                            localStorage.setItem('app_pages', JSON.stringify(loadedPages))
+
+            loadLocalData()
+
+            // 2. Fetch fresh database values from central SQLite DB
+            const fetchFromDb = async () => {
+                try {
+                    const response = await fetch('/api/store')
+                    const result = await response.json()
+                    if (result.success && result.data) {
+                        const dbData = result.data
+
+                        // Products
+                        if (dbData.app_products) {
+                            const sorted = resequenceProducts(dbData.app_products)
+                            setProducts(sorted)
+                            localStorage.setItem('app_products', JSON.stringify(sorted))
+                        } else {
+                            const localProducts = localStorage.getItem('app_products')
+                            if (localProducts) {
+                                try {
+                                    const parsed = JSON.parse(localProducts)
+                                    saveState('app_products', parsed)
+                                    setProducts(parsed)
+                                } catch (e) {
+                                    saveState('app_products', resequenceProducts(initialProducts))
+                                }
+                            } else {
+                                saveState('app_products', resequenceProducts(initialProducts))
+                            }
                         }
-                    }
-                } catch(e){}
-            } else {
-                localStorage.setItem('app_pages', JSON.stringify(defaultPages))
-            }
-            setPages(loadedPages)
-            
-            // Load Subcategories
-            const savedAltKategoriler = localStorage.getItem('app_alt_kategoriler')
-            let loadedAltKategoriler: AltKategori[] = []
-            if (savedAltKategoriler) {
-                try { loadedAltKategoriler = JSON.parse(savedAltKategoriler) } catch(e){}
-            } else {
-                // Self-healing seed generation from initial products
-                const map = new Map<string, AltKategori>()
-                loadedProducts.forEach(p => {
-                    const pKurumSlugs = p.kurumSlugs || [p.kurumSlug].filter(Boolean)
-                    if (p.altKategoriSlugs && p.altKategoriNames) {
-                        p.altKategoriSlugs.forEach((slug, idx) => {
-                            const name = p.altKategoriNames?.[idx] || p.altKategoriName
-                            const existing = map.get(slug)
-                            if (existing) {
-                                pKurumSlugs.forEach(ks => {
-                                    if (!existing.kurumSlugs.includes(ks)) {
-                                        existing.kurumSlugs.push(ks)
+
+                        // Institutions
+                        if (dbData.app_kurumlar) {
+                            setKurumlar(dbData.app_kurumlar)
+                            localStorage.setItem('app_kurumlar', JSON.stringify(dbData.app_kurumlar))
+                        } else {
+                            const localKurumlar = localStorage.getItem('app_kurumlar')
+                            if (localKurumlar) {
+                                try {
+                                    const parsed = JSON.parse(localKurumlar)
+                                    saveState('app_kurumlar', parsed)
+                                    setKurumlar(parsed)
+                                } catch (e) {
+                                    saveState('app_kurumlar', initialKurumlar)
+                                }
+                            } else {
+                                saveState('app_kurumlar', initialKurumlar)
+                            }
+                        }
+
+                        // Settings
+                        if (dbData.app_settings) {
+                            setSettings(dbData.app_settings)
+                            localStorage.setItem('app_settings', JSON.stringify(dbData.app_settings))
+                        } else {
+                            const localSettings = localStorage.getItem('app_settings')
+                            if (localSettings) {
+                                try {
+                                    const parsed = JSON.parse(localSettings)
+                                    saveState('app_settings', parsed)
+                                    setSettings(parsed)
+                                } catch (e) {
+                                    saveState('app_settings', defaultSettings)
+                                }
+                            } else {
+                                saveState('app_settings', defaultSettings)
+                            }
+                        }
+
+                        // Featured Ids
+                        if (dbData.featured_product_ids) {
+                            setFeaturedIds(dbData.featured_product_ids)
+                            localStorage.setItem('featured_product_ids', JSON.stringify(dbData.featured_product_ids))
+                        } else {
+                            const localFeatured = localStorage.getItem('featured_product_ids')
+                            if (localFeatured) {
+                                try {
+                                    const parsed = JSON.parse(localFeatured)
+                                    saveState('featured_product_ids', parsed)
+                                    setFeaturedIds(parsed)
+                                } catch (e) {
+                                    const initialFeatured = initialProducts.filter(p => p.isFeatured).map(p => p.id)
+                                    saveState('featured_product_ids', initialFeatured)
+                                }
+                            } else {
+                                const initialFeatured = initialProducts.filter(p => p.isFeatured).map(p => p.id)
+                                saveState('featured_product_ids', initialFeatured)
+                            }
+                        }
+
+                        // Orders
+                        if (dbData.app_orders) {
+                            setOrders(dbData.app_orders)
+                            localStorage.setItem('app_orders', JSON.stringify(dbData.app_orders))
+                        } else {
+                            const localOrders = localStorage.getItem('app_orders')
+                            if (localOrders) {
+                                try {
+                                    const parsed = JSON.parse(localOrders)
+                                    saveState('app_orders', parsed)
+                                    setOrders(parsed)
+                                } catch (e) {
+                                    saveState('app_orders', [])
+                                }
+                            } else {
+                                saveState('app_orders', [])
+                            }
+                        }
+
+                        // Coupons
+                        if (dbData.app_coupons) {
+                            setCoupons(dbData.app_coupons)
+                            localStorage.setItem('app_coupons', JSON.stringify(dbData.app_coupons))
+                        } else {
+                            const localCoupons = localStorage.getItem('app_coupons')
+                            if (localCoupons) {
+                                try {
+                                    const parsed = JSON.parse(localCoupons)
+                                    saveState('app_coupons', parsed)
+                                    setCoupons(parsed)
+                                } catch (e) {
+                                    saveState('app_coupons', defaultCoupons)
+                                }
+                            } else {
+                                saveState('app_coupons', defaultCoupons)
+                            }
+                        }
+
+                        // Pages
+                        if (dbData.app_pages) {
+                            setPages(dbData.app_pages)
+                            localStorage.setItem('app_pages', JSON.stringify(dbData.app_pages))
+                        } else {
+                            const localPages = localStorage.getItem('app_pages')
+                            if (localPages) {
+                                try {
+                                    const parsed = JSON.parse(localPages)
+                                    saveState('app_pages', parsed)
+                                    setPages(parsed)
+                                } catch (e) {
+                                    saveState('app_pages', defaultPages)
+                                }
+                            } else {
+                                saveState('app_pages', defaultPages)
+                            }
+                        }
+
+                        // Subcategories
+                        if (dbData.app_alt_kategoriler) {
+                            setAltKategoriler(dbData.app_alt_kategoriler)
+                            localStorage.setItem('app_alt_kategoriler', JSON.stringify(dbData.app_alt_kategoriler))
+                        } else {
+                            const localAltKategoriler = localStorage.getItem('app_alt_kategoriler')
+                            if (localAltKategoriler) {
+                                try {
+                                    const parsed = JSON.parse(localAltKategoriler)
+                                    saveState('app_alt_kategoriler', parsed)
+                                    setAltKategoriler(parsed)
+                                } catch (e) {
+                                    // Fallback to auto-heal
+                                    const map = new Map<string, AltKategori>()
+                                    const pList = dbData.app_products || initialProducts
+                                    pList.forEach((p: any) => {
+                                        const pKurumSlugs = p.kurumSlugs || [p.kurumSlug].filter(Boolean)
+                                        if (p.altKategoriSlugs && p.altKategoriNames) {
+                                            p.altKategoriSlugs.forEach((slug: string, idx: number) => {
+                                                const name = p.altKategoriNames?.[idx] || p.altKategoriName
+                                                const existing = map.get(slug)
+                                                if (existing) {
+                                                    pKurumSlugs.forEach((ks: string) => {
+                                                        if (!existing.kurumSlugs.includes(ks)) {
+                                                            existing.kurumSlugs.push(ks)
+                                                        }
+                                                    })
+                                                } else {
+                                                    map.set(slug, {
+                                                        id: 'altcat_' + Math.random().toString(36).substr(2, 9),
+                                                        name,
+                                                        slug,
+                                                        description: `${name} sınav hazırlık dersleri.`,
+                                                        kurumSlugs: [...pKurumSlugs]
+                                                    })
+                                                }
+                                            })
+                                        } else if (p.altKategoriSlug && p.altKategoriName) {
+                                            const slug = p.altKategoriSlug
+                                            const existing = map.get(slug)
+                                            if (existing) {
+                                                pKurumSlugs.forEach((ks: string) => {
+                                                    if (!existing.kurumSlugs.includes(ks)) {
+                                                        existing.kurumSlugs.push(ks)
+                                                    }
+                                                })
+                                            } else {
+                                                map.set(slug, {
+                                                    id: 'altcat_' + Math.random().toString(36).substr(2, 9),
+                                                    name: p.altKategoriName,
+                                                    slug,
+                                                    description: `${p.altKategoriName} sınav hazırlık dersleri.`,
+                                                    kurumSlugs: [...pKurumSlugs]
+                                                })
+                                            }
+                                        }
+                                    })
+                                    const healedAltCat = Array.from(map.values())
+                                    setAltKategoriler(healedAltCat)
+                                    saveState('app_alt_kategoriler', healedAltCat)
+                                }
+                            } else {
+                                // Fallback to auto-heal
+                                const map = new Map<string, AltKategori>()
+                                const pList = dbData.app_products || initialProducts
+                                pList.forEach((p: any) => {
+                                    const pKurumSlugs = p.kurumSlugs || [p.kurumSlug].filter(Boolean)
+                                    if (p.altKategoriSlugs && p.altKategoriNames) {
+                                        p.altKategoriSlugs.forEach((slug: string, idx: number) => {
+                                            const name = p.altKategoriNames?.[idx] || p.altKategoriName
+                                            const existing = map.get(slug)
+                                            if (existing) {
+                                                pKurumSlugs.forEach((ks: string) => {
+                                                    if (!existing.kurumSlugs.includes(ks)) {
+                                                        existing.kurumSlugs.push(ks)
+                                                    }
+                                                })
+                                            } else {
+                                                map.set(slug, {
+                                                    id: 'altcat_' + Math.random().toString(36).substr(2, 9),
+                                                    name,
+                                                    slug,
+                                                    description: `${name} sınav hazırlık dersleri.`,
+                                                    kurumSlugs: [...pKurumSlugs]
+                                                })
+                                            }
+                                        })
+                                    } else if (p.altKategoriSlug && p.altKategoriName) {
+                                        const slug = p.altKategoriSlug
+                                        const existing = map.get(slug)
+                                        if (existing) {
+                                            pKurumSlugs.forEach((ks: string) => {
+                                                if (!existing.kurumSlugs.includes(ks)) {
+                                                    existing.kurumSlugs.push(ks)
+                                                }
+                                            })
+                                        } else {
+                                            map.set(slug, {
+                                                id: 'altcat_' + Math.random().toString(36).substr(2, 9),
+                                                name: p.altKategoriName,
+                                                slug,
+                                                description: `${p.altKategoriName} sınav hazırlık dersleri.`,
+                                                kurumSlugs: [...pKurumSlugs]
+                                            })
+                                        }
                                     }
                                 })
-                            } else {
-                                map.set(slug, {
-                                    id: 'altcat_' + Math.random().toString(36).substr(2, 9),
-                                    name,
-                                    slug,
-                                    description: `${name} sınav hazırlık dersleri.`,
-                                    kurumSlugs: [...pKurumSlugs]
-                                })
-                            }
-                        })
-                    } else if (p.altKategoriSlug && p.altKategoriName) {
-                        const slug = p.altKategoriSlug
-                        const existing = map.get(slug)
-                        if (existing) {
-                            pKurumSlugs.forEach(ks => {
-                                if (!existing.kurumSlugs.includes(ks)) {
-                                    existing.kurumSlugs.push(ks)
-                                }
-                            })
-                        } else {
-                            map.set(slug, {
-                                id: 'altcat_' + Math.random().toString(36).substr(2, 9),
-                                name: p.altKategoriName,
-                                slug,
-                                description: `${p.altKategoriName} sınav hazırlık dersleri.`,
-                                kurumSlugs: [...pKurumSlugs]
-                            })
-                        }
-                    }
-                })
-                loadedAltKategoriler = Array.from(map.values())
-                localStorage.setItem('app_alt_kategoriler', JSON.stringify(loadedAltKategoriler))
-            }
-            setAltKategoriler(loadedAltKategoriler)
-
-            // Self-healing database compression pass (automatically solves QuotaExceededError)
-            const compressImageHelper = (base64Str: string, maxWidth = 800, maxHeight = 800, quality = 0.7): Promise<string> => {
-                return new Promise((resolve) => {
-                    if (!base64Str || !base64Str.startsWith('data:image')) {
-                        resolve(base64Str)
-                        return
-                    }
-                    if (base64Str.length < 150000) {
-                        resolve(base64Str)
-                        return
-                    }
-                    const img = new window.Image()
-                    img.src = base64Str
-                    img.onload = () => {
-                        const canvas = document.createElement('canvas')
-                        let width = img.width
-                        let height = img.height
-
-                        if (width > height) {
-                            if (width > maxWidth) {
-                                height = Math.round((height * maxWidth) / width)
-                                width = maxWidth
-                            }
-                        } else {
-                            if (height > maxHeight) {
-                                width = Math.round((width * maxHeight) / height)
-                                height = maxHeight
+                                const healedAltCat = Array.from(map.values())
+                                setAltKategoriler(healedAltCat)
+                                saveState('app_alt_kategoriler', healedAltCat)
                             }
                         }
-
-                        canvas.width = width
-                        canvas.height = height
-
-                        const ctx = canvas.getContext('2d')
-                        if (!ctx) {
-                            resolve(base64Str)
-                            return
-                        }
-
-                        ctx.drawImage(img, 0, 0, width, height)
-                        const compressedBase64 = canvas.toDataURL('image/jpeg', quality)
-                        resolve(compressedBase64)
                     }
-                    img.onerror = () => {
-                        resolve(base64Str)
-                    }
-                })
-            }
-
-            const runImageCompressionHealer = async () => {
-                let changed = false
-
-                // 1. Optimize Pages
-                const optimizedPages = await Promise.all(loadedPages.map(async (page) => {
-                    let pageChanged = false
-                    const updatedSlides = page.slides ? await Promise.all(page.slides.map(async (slide) => {
-                        if (slide.image && slide.image.startsWith('data:image') && slide.image.length >= 150000) {
-                            const comp = await compressImageHelper(slide.image)
-                            if (comp !== slide.image) {
-                                pageChanged = true
-                                return { ...slide, image: comp }
-                            }
-                        }
-                        return slide
-                    })) : undefined
-
-                    let updatedAnnouncementImage = page.announcementImage
-                    if (page.announcementImage && page.announcementImage.startsWith('data:image') && page.announcementImage.length >= 150000) {
-                        const comp = await compressImageHelper(page.announcementImage)
-                        if (comp !== page.announcementImage) {
-                            pageChanged = true
-                            updatedAnnouncementImage = comp
-                        }
-                    }
-
-                    const updatedCustomSections = page.customSections ? await Promise.all(page.customSections.map(async (sec) => {
-                        if (sec.image && sec.image.startsWith('data:image') && sec.image.length >= 150000) {
-                            const comp = await compressImageHelper(sec.image)
-                            if (comp !== sec.image) {
-                                pageChanged = true
-                                return { ...sec, image: comp }
-                            }
-                        }
-                        return sec
-                    })) : undefined
-
-                    if (pageChanged) {
-                        changed = true
-                        return {
-                            ...page,
-                            slides: updatedSlides,
-                            announcementImage: updatedAnnouncementImage,
-                            customSections: updatedCustomSections
-                        }
-                    }
-                    return page
-                }))
-
-                // 2. Optimize Institutions
-                const optimizedKurumlar = await Promise.all(loadedKurumlar.map(async (k) => {
-                    if (k.icon && k.icon.startsWith('data:image') && k.icon.length >= 150000) {
-                        const comp = await compressImageHelper(k.icon)
-                        if (comp !== k.icon) {
-                            changed = true
-                            return { ...k, icon: comp }
-                        }
-                    }
-                    return k
-                }))
-
-                // 3. Optimize Products
-                const optimizedProducts = await Promise.all(healedProducts.map(async (p) => {
-                    let prodChanged = false
-                    let updatedImage = p.image
-                    if (p.image && p.image.startsWith('data:image') && p.image.length >= 150000) {
-                        const comp = await compressImageHelper(p.image)
-                        if (comp !== p.image) {
-                            prodChanged = true
-                            updatedImage = comp
-                        }
-                    }
-
-                    const updatedImages = p.images ? await Promise.all(p.images.map(async (img) => {
-                        if (img && img.startsWith('data:image') && img.length >= 150000) {
-                            const comp = await compressImageHelper(img)
-                            if (comp !== img) {
-                                prodChanged = true
-                                return comp
-                            }
-                        }
-                        return img
-                    })) : undefined
-
-                    if (prodChanged) {
-                        changed = true
-                        return {
-                            ...p,
-                            image: updatedImage,
-                            images: updatedImages
-                        }
-                    }
-                    return p
-                }))
-
-                if (changed) {
-                    console.log("Database image compression auto-healed base64 sizes!")
-                    setPages(optimizedPages)
-                    setKurumlar(optimizedKurumlar)
-                    setProducts(resequenceProducts(optimizedProducts))
-
-                    try {
-                        localStorage.setItem('app_pages', JSON.stringify(optimizedPages))
-                        localStorage.setItem('app_kurumlar', JSON.stringify(optimizedKurumlar))
-                        localStorage.setItem('app_products', JSON.stringify(resequenceProducts(optimizedProducts)))
-                    } catch (e) {
-                        console.error("Auto-heal localStorage save failed:", e)
-                    }
+                } catch (error) {
+                    console.error('Error fetching fresh data from central database:', error)
+                } finally {
+                    setInitialized(true)
                 }
             }
 
-            runImageCompressionHealer()
-
-            setInitialized(true)
+            fetchFromDb()
         }
     }, [])
 
     const safeSaveProducts = (updatedList: Product[]) => {
         try {
-            localStorage.setItem('app_products', JSON.stringify(updatedList))
+            saveState('app_products', updatedList)
         } catch (e: any) {
             if (e.name === 'QuotaExceededError' || e.code === 22 || e.message?.includes('quota')) {
                 alert('⚠️ Tarayıcı Depolama Limiti Aşıldı!\n\nYüklediğiniz resimlerin boyutu çok büyük olduğu için tarayıcının depolama sınırı aşıldı. Resim sıkıştırma devrededir ancak tarayıcınızın hafızası dolu kalmış olabilir. Lütfen daha küçük boyutlu resimler yüklemeyi deneyin ya da "Verileri Sıfırla" butonuyla hafızayı temizleyin.')
@@ -813,20 +841,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (featuredIds.includes(id)) {
             const updatedFeatured = featuredIds.filter(fId => fId !== id)
             setFeaturedIds(updatedFeatured)
-            localStorage.setItem('featured_product_ids', JSON.stringify(updatedFeatured))
+            saveState('featured_product_ids', updatedFeatured)
         }
     }
 
     const addKurum = (kurum: Kurum) => {
         const updated = [...kurumlar, kurum]
         setKurumlar(updated)
-        localStorage.setItem('app_kurumlar', JSON.stringify(updated))
+        saveState('app_kurumlar', updated)
     }
 
     const updateKurum = (id: string, updatedFields: Partial<Kurum>) => {
         const updated = kurumlar.map(k => k.id === id ? { ...k, ...updatedFields } : k)
         setKurumlar(updated)
-        localStorage.setItem('app_kurumlar', JSON.stringify(updated))
+        saveState('app_kurumlar', updated)
     }
 
     const deleteKurum = (id: string) => {
@@ -835,18 +863,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         
         const updated = kurumlar.filter(k => k.id !== id)
         setKurumlar(updated)
-        localStorage.setItem('app_kurumlar', JSON.stringify(updated))
+        saveState('app_kurumlar', updated)
 
         // Also delete all products associated with this institution to maintain integrity
         const updatedProducts = products.filter(p => p.kurumSlug !== targetKurum.slug)
         setProducts(updatedProducts)
-        localStorage.setItem('app_products', JSON.stringify(updatedProducts))
+        saveState('app_products', updatedProducts)
     }
 
     const addAltKategori = (cat: AltKategori) => {
         const updated = [...altKategoriler, cat]
         setAltKategoriler(updated)
-        localStorage.setItem('app_alt_kategoriler', JSON.stringify(updated))
+        saveState('app_alt_kategoriler', updated)
     }
 
     const updateAltKategori = (id: string, updatedFields: Partial<AltKategori>) => {
@@ -860,7 +888,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         // Update altKategoriler list
         const updated = altKategoriler.map(c => c.id === id ? { ...c, ...updatedFields } : c)
         setAltKategoriler(updated)
-        localStorage.setItem('app_alt_kategoriler', JSON.stringify(updated))
+        saveState('app_alt_kategoriler', updated)
 
         // Referential Integrity: Toplu güncelleme across all products in Next.js state!
         const updatedProducts = products.map(p => {
@@ -898,7 +926,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         })
 
         setProducts(updatedProducts)
-        localStorage.setItem('app_products', JSON.stringify(updatedProducts))
+        saveState('app_products', updatedProducts)
     }
 
     const deleteAltKategori = (id: string) => {
@@ -909,7 +937,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
         const updated = altKategoriler.filter(c => c.id !== id)
         setAltKategoriler(updated)
-        localStorage.setItem('app_alt_kategoriler', JSON.stringify(updated))
+        saveState('app_alt_kategoriler', updated)
 
         // Referential Integrity: Safely remove or unlink from products
         const updatedProducts = products.map(p => {
@@ -945,13 +973,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         })
 
         setProducts(updatedProducts)
-        localStorage.setItem('app_products', JSON.stringify(updatedProducts))
+        saveState('app_products', updatedProducts)
     }
 
     const updateSettings = (updatedFields: Partial<AppSettings>) => {
         const updated = { ...settings, ...updatedFields }
         setSettings(updated)
-        localStorage.setItem('app_settings', JSON.stringify(updated))
+        saveState('app_settings', updated)
     }
 
     const toggleFeatured = (id: string) => {
@@ -962,10 +990,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             updated = [...featuredIds, id]
         }
         setFeaturedIds(updated)
-        localStorage.setItem('featured_product_ids', JSON.stringify(updated))
+        saveState('featured_product_ids', updated)
     }
 
-    const resetAllData = () => {
+    const resetAllData = async () => {
         localStorage.removeItem('app_products')
         localStorage.removeItem('app_kurumlar')
         localStorage.removeItem('app_alt_kategoriler')
@@ -983,42 +1011,51 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setOrders([])
         setCoupons(defaultCoupons)
         setPages(defaultPages)
+
+        await saveState('app_products', resequenceProducts(initialProducts))
+        await saveState('app_kurumlar', initialKurumlar)
+        await saveState('app_alt_kategoriler', [])
+        await saveState('app_settings', defaultSettings)
+        await saveState('featured_product_ids', initialProducts.filter(p => p.isFeatured).map(p => p.id))
+        await saveState('app_orders', [])
+        await saveState('app_coupons', defaultCoupons)
+        await saveState('app_pages', defaultPages)
     }
 
     const addOrder = (order: Order) => {
         const updated = [order, ...orders]
         setOrders(updated)
-        localStorage.setItem('app_orders', JSON.stringify(updated))
+        saveState('app_orders', updated)
     }
 
     const updateOrderStatus = (id: string, status: Order['status']) => {
         const updated = orders.map(o => o.id === id ? { ...o, status } : o)
         setOrders(updated)
-        localStorage.setItem('app_orders', JSON.stringify(updated))
+        saveState('app_orders', updated)
     }
 
     const deleteOrder = (id: string) => {
         const updated = orders.filter(o => o.id !== id)
         setOrders(updated)
-        localStorage.setItem('app_orders', JSON.stringify(updated))
+        saveState('app_orders', updated)
     }
 
     const addCoupon = (coupon: Coupon) => {
         const updated = [...coupons, coupon]
         setCoupons(updated)
-        localStorage.setItem('app_coupons', JSON.stringify(updated))
+        saveState('app_coupons', updated)
     }
 
     const deleteCoupon = (id: string) => {
         const updated = coupons.filter(c => c.id !== id)
         setCoupons(updated)
-        localStorage.setItem('app_coupons', JSON.stringify(updated))
+        saveState('app_coupons', updated)
     }
 
     const useCoupon = (code: string) => {
         const updated = coupons.map(c => c.code.toUpperCase() === code.toUpperCase() ? { ...c, usedCount: (c.usedCount || 0) + 1 } : c)
         setCoupons(updated)
-        localStorage.setItem('app_coupons', JSON.stringify(updated))
+        saveState('app_coupons', updated)
     }
 
     const useProductCoupon = (productId: string, code: string) => {
@@ -1032,14 +1069,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             return p
         })
         setProducts(updated)
-        localStorage.setItem('app_products', JSON.stringify(updated))
+        saveState('app_products', updated)
     }
 
     const updatePage = (id: EditablePage['id'], fields: Partial<EditablePage>) => {
         const updated = pages.map(p => p.id === id ? { ...p, ...fields } : p)
         setPages(updated)
         try {
-            localStorage.setItem('app_pages', JSON.stringify(updated))
+            saveState('app_pages', updated)
         } catch (e) {
             console.error("LocalStorage save failed due to quota limit:", e)
             alert("Hata: Görsel boyutu tarayıcı hafıza limitini (5MB) aştı! Lütfen slayt arka planına daha düşük boyutlu veya optimize edilmiş bir resim yükleyin.")

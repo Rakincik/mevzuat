@@ -79,3 +79,9 @@ enum OrderStatus {
   DELIVERED
   CANCELLED
 }
+
+model KeyValueStore {
+  key   String @id
+  value String // JSON string
+}
+
