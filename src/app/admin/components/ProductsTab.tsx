@@ -39,7 +39,9 @@ export default function ProductsTab({ triggerToast, onAddProduct, onEditProduct 
 
     // Filter logic
     const filteredProducts = products.filter(product => {
-        const matchesKurum = selectedKurum === 'all' || product.kurumSlug === selectedKurum
+        const matchesKurum = selectedKurum === 'all' || 
+            product.kurumSlug === selectedKurum || 
+            (product.kurumSlugs && product.kurumSlugs.includes(selectedKurum))
         const matchesSearch = 
             product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             (product.description && product.description.toLowerCase().includes(searchQuery.toLowerCase()))

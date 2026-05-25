@@ -38,7 +38,11 @@ export default function DersDetailPage() {
 
     // Related products from same subcategory
     const relatedProducts = products
-        .filter(p => p.kurumSlug === kurumSlug && p.altKategoriSlug === altKategoriSlug && p.slug !== dersSlug)
+        .filter(p => 
+            (p.kurumSlug === kurumSlug || (p.kurumSlugs && p.kurumSlugs.includes(kurumSlug))) && 
+            (p.altKategoriSlug === altKategoriSlug || (p.altKategoriSlugs && p.altKategoriSlugs.includes(altKategoriSlug))) && 
+            p.slug !== dersSlug
+        )
         .slice(0, 4)
 
     useEffect(() => {

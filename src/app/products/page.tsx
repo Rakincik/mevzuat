@@ -135,7 +135,9 @@ function ProductsPageContent() {
             product.description.toLowerCase().includes(searchQuery.toLowerCase())
 
         // Kurum matching
-        const matchesKurum = selectedKurumlar.length === 0 || selectedKurumlar.includes(product.kurumSlug)
+        const matchesKurum = selectedKurumlar.length === 0 || 
+            selectedKurumlar.includes(product.kurumSlug) || 
+            (product.kurumSlugs && product.kurumSlugs.some(slug => selectedKurumlar.includes(slug)))
 
         // Category matching
         const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(product.categoryName)
