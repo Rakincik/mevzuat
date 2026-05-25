@@ -517,7 +517,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             // 2. Fetch fresh database values from central SQLite DB
             const fetchFromDb = async () => {
                 try {
-                    const response = await fetch('/api/store')
+                    const response = await fetch('/api/store', { cache: 'no-store' })
                     const result = await response.json()
                     if (result.success && result.data) {
                         const dbData = result.data
