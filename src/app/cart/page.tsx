@@ -11,7 +11,7 @@ import styles from './page.module.css'
 
 export default function CartPage() {
     const { items, removeItem, updateQuantity, getTotalPrice, clearCart } = useCartStore()
-    const { coupons, addOrder, useCoupon, products, useProductCoupon } = useApp()
+    const { coupons, addOrder, useCoupon, products, useProductCoupon, settings } = useApp()
     
     const [couponCode, setCouponCode] = useState('')
     const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null)
@@ -337,6 +337,29 @@ export default function CartPage() {
                         </div>
                         <form onSubmit={handleCheckoutSubmit}>
                             <div className={styles.modalBody}>
+                                {(settings.bankIban1 || settings.bankIban2) && (
+                                    <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '8px', marginBottom: '24px', border: '1px solid #e2e8f0' }}>
+                                        <h3 style={{ fontSize: '14px', fontWeight: '800', color: '#0f172a', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            🏦 EFT / Havale ile Ödeme Bilgileri
+                                        </h3>
+                                        <p style={{ fontSize: '13px', color: '#475569', marginBottom: '12px' }}>
+                                            Lütfen ödemenizi aşağıdaki hesaplardan birine yapın ve açıklama kısmına <strong>Adınızı Soyadınızı</strong> yazmayı unutmayın.
+                                        </p>
+                                        <div style={{ fontSize: '13px', background: 'white', padding: '12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
+                                            <div style={{ marginBottom: '8px' }}><strong>Alıcı Unvanı:</strong> {settings.bankAccountHolder}</div>
+                                            {settings.bankName1 && settings.bankIban1 && (
+                                                <div style={{ marginBottom: settings.bankName2 ? '8px' : '0' }}>
+                                                    <strong>{settings.bankName1}:</strong> <span style={{ fontFamily: 'monospace', fontSize: '14px' }}>{settings.bankIban1}</span>
+                                                </div>
+                                            )}
+                                            {settings.bankName2 && settings.bankIban2 && (
+                                                <div>
+                                                    <strong>{settings.bankName2}:</strong> <span style={{ fontFamily: 'monospace', fontSize: '14px' }}>{settings.bankIban2}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
                                 <div className={styles.checkoutForm}>
                                     <div className={styles.formGroup}>
                                         <label htmlFor="cust-name">Ad Soyad *</label>

@@ -7,9 +7,9 @@ import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { 
     Settings as SettingsIcon, ShoppingBag, BookOpen, Percent, 
-    FileText, ArrowLeft, Star, Plus, Check, CreditCard, LogOut
+    FileText, ArrowLeft, Star, Plus, Check, CreditCard, LogOut, Users
 } from 'lucide-react'
-import { useApp, Product, Order, Kurum, EditablePage, AltKategori } from '@/context/AppContext'
+import { useApp, Product, Order, Kurum, EditablePage, AltKategori, Student } from '@/context/AppContext'
 import styles from './page.module.css'
 
 // Dynamic import of modular tab sub-components (lazy loads on-demand)
@@ -20,6 +20,7 @@ const KurumlarTab = dynamic(() => import('./components/KurumlarTab'), { ssr: fal
 const FeaturedTab = dynamic(() => import('./components/FeaturedTab'), { ssr: false })
 const CouponsTab = dynamic(() => import('./components/CouponsTab'), { ssr: false })
 const PagesTab = dynamic(() => import('./components/PagesTab'), { ssr: false })
+const UsersTab = dynamic(() => import('./components/UsersTab'), { ssr: false })
 
 // Dynamic import of modular modal components (lazy loads on-demand)
 const OrderModal = dynamic(() => import('./components/OrderModal'), { ssr: false })
@@ -27,6 +28,7 @@ const ProductModal = dynamic(() => import('./components/ProductModal'), { ssr: f
 const KurumModal = dynamic(() => import('./components/KurumModal'), { ssr: false })
 const PageCMSModal = dynamic(() => import('./components/PageCMSModal'), { ssr: false })
 const AltKategoriModal = dynamic(() => import('./components/AltKategoriModal'), { ssr: false })
+const UserModal = dynamic(() => import('./components/UserModal'), { ssr: false })
 
 export default function AdminPage() {
     const { 
@@ -51,7 +53,7 @@ export default function AdminPage() {
         router.push('/auth/login')
     }
 
-    const [activeTab, setActiveTab] = useState<'settings' | 'orders' | 'products' | 'kurumlar' | 'featured' | 'coupons' | 'pages'>('settings')
+    const [activeTab, setActiveTab] = useState<'settings' | 'orders' | 'products' | 'kurumlar' | 'featured' | 'coupons' | 'pages' | 'users'>('settings')
 
     // Toast state
     const [showSuccessToast, setShowSuccessToast] = useState(false)
@@ -68,6 +70,8 @@ export default function AdminPage() {
     const [initialKurumSlugForAltCat, setInitialKurumSlugForAltCat] = useState<string | undefined>(undefined)
     const [isPageModalOpen, setIsPageModalOpen] = useState(false)
     const [editingPage, setEditingPage] = useState<EditablePage | null>(null)
+    const [isUserModalOpen, setIsUserModalOpen] = useState(false)
+    const [editingStudent, setEditingStudent] = useState<Student | null>(null)
 
     const triggerToast = (message: string) => {
         setToastMessage(message)
@@ -127,6 +131,30 @@ export default function AdminPage() {
         setIsPageModalOpen(true)
     }
 
+    const openCreateNewPageModal = () => {
+        const uniqueId = 'custom_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5)
+        const newPage: EditablePage = {
+            id: uniqueId,
+            title: '',
+            slug: '',
+            content: '<p>Yeni sayfa içeriğinizi buraya yazın...</p>',
+            status: 'draft',
+            createdAt: new Date().toISOString()
+        }
+        setEditingPage(newPage)
+        setIsPageModalOpen(true)
+    }
+
+    const openAddUserModal = () => {
+        setEditingStudent(null)
+        setIsUserModalOpen(true)
+    }
+
+    const openEditUserModal = (student: Student) => {
+        setEditingStudent(student)
+        setIsUserModalOpen(true)
+    }
+
     // Statistics calculations
     const activeOrders = orders.filter(o => o.status !== 'CANCELLED')
     const totalSalesRevenue = activeOrders.reduce((sum, o) => sum + o.total, 0)
@@ -162,7 +190,7 @@ export default function AdminPage() {
     }
 
     return (
-        <div className="container section">
+        <div className="container" style={{ padding: '24px 0' }}>
             {/* Header Area */}
             <div className={styles.adminHeader}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
@@ -228,6 +256,14 @@ export default function AdminPage() {
                         </button>
 
                         <button 
+                            className={`${styles.tabBtn} ${activeTab === 'users' ? styles.tabActive : ''}`}
+                            onClick={() => setActiveTab('users')}
+                        >
+                            <Users size={16} />
+                            <span>Kullanıcı Yönetimi</span>
+                        </button>
+
+                        <button 
                             className={`${styles.tabBtn} ${activeTab === 'featured' ? styles.tabActive : ''}`}
                             onClick={() => setActiveTab('featured')}
                         >
@@ -253,14 +289,6 @@ export default function AdminPage() {
                     </div>
 
                     <div style={{ marginTop: 'auto', paddingTop: '20px', borderTop: '1px solid #cbd5e1', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        <button 
-                            onClick={handleResetAll}
-                            className={styles.actionDeleteBtn}
-                            style={{ width: '100%', padding: '8px 12px', fontSize: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
-                            title="Tüm verileri varsayılana sıfırlar"
-                        >
-                            Verileri Sıfırla
-                        </button>
                         <button 
                             onClick={handleLogout}
                             className="btn btn-outline"
@@ -341,7 +369,8 @@ export default function AdminPage() {
                     )}
                     {activeTab === 'featured' && <FeaturedTab triggerToast={triggerToast} />}
                     {activeTab === 'coupons' && <CouponsTab triggerToast={triggerToast} />}
-                    {activeTab === 'pages' && <PagesTab onEditPage={openEditPageModal} />}
+                    {activeTab === 'pages' && <PagesTab onEditPage={openEditPageModal} onCreateNewPage={openCreateNewPageModal} />}
+                    {activeTab === 'users' && <UsersTab triggerToast={triggerToast} onAddStudent={openAddUserModal} onEditStudent={openEditUserModal} />}
                 </main>
             </div>
 
@@ -375,6 +404,13 @@ export default function AdminPage() {
                 onClose={() => setIsPageModalOpen(false)} 
                 editingPage={editingPage} 
                 triggerToast={triggerToast} 
+            />
+
+            <UserModal
+                isOpen={isUserModalOpen}
+                onClose={() => setIsUserModalOpen(false)}
+                editingStudent={editingStudent}
+                triggerToast={triggerToast}
             />
 
             {/* Success Toast Feedback */}

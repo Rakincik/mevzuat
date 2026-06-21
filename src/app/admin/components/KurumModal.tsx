@@ -20,7 +20,13 @@ export default function KurumModal({ isOpen, onClose, editingKurum, triggerToast
         slug: '',
         description: '',
         color: '#4f46e5',
-        icon: 'Landmark'
+        icon: 'Landmark',
+        order: 999,
+        showOnHomepage: true,
+        status: 'active' as 'active' | 'passive',
+        image: '',
+        seoTitle: '',
+        seoDescription: ''
     })
 
     // Sync form state when modal opens/changes
@@ -31,7 +37,13 @@ export default function KurumModal({ isOpen, onClose, editingKurum, triggerToast
                 slug: editingKurum.slug,
                 description: editingKurum.description || '',
                 color: editingKurum.color || '#4f46e5',
-                icon: editingKurum.icon || 'Landmark'
+                icon: editingKurum.icon || 'Landmark',
+                order: editingKurum.order !== undefined ? editingKurum.order : 999,
+                showOnHomepage: editingKurum.showOnHomepage !== undefined ? editingKurum.showOnHomepage : true,
+                status: editingKurum.status || 'active',
+                image: editingKurum.image || '',
+                seoTitle: editingKurum.seoTitle || '',
+                seoDescription: editingKurum.seoDescription || ''
             })
             setIsSlugPristine(false)
         } else {
@@ -40,7 +52,13 @@ export default function KurumModal({ isOpen, onClose, editingKurum, triggerToast
                 slug: '',
                 description: '',
                 color: '#3b82f6',
-                icon: 'Landmark'
+                icon: 'Landmark',
+                order: 999,
+                showOnHomepage: true,
+                status: 'active',
+                image: '',
+                seoTitle: '',
+                seoDescription: ''
             })
             setIsSlugPristine(true)
         }
@@ -106,6 +124,34 @@ export default function KurumModal({ isOpen, onClose, editingKurum, triggerToast
         reader.readAsDataURL(file)
     }
 
+    const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files
+        if (!files || files.length === 0) return
+        const file = files[0]
+        if (file.size > 10 * 1024 * 1024) {
+            triggerConfirm({
+                title: 'Dosya Çok Büyük',
+                message: `"${file.name}" çok büyük! Maksimum 10 MB yükleyebilirsiniz.`,
+                confirmText: 'Tamam',
+                cancelText: 'Kapat',
+                isDangerous: true,
+                onConfirm: () => {}
+            })
+            return
+        }
+
+        const reader = new FileReader()
+        reader.onloadend = () => {
+            if (reader.result) {
+                setKurumForm(prev => ({
+                    ...prev,
+                    image: reader.result as string
+                }))
+            }
+        }
+        reader.readAsDataURL(file)
+    }
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
         
@@ -122,7 +168,13 @@ export default function KurumModal({ isOpen, onClose, editingKurum, triggerToast
             description: kurumForm.description.trim(),
             color: kurumForm.color,
             icon: kurumForm.icon.trim() || 'Landmark',
-            productCount: editingKurum ? editingKurum.productCount : 0
+            productCount: editingKurum ? editingKurum.productCount : 0,
+            order: kurumForm.order,
+            showOnHomepage: kurumForm.showOnHomepage,
+            status: kurumForm.status,
+            image: kurumForm.image,
+            seoTitle: kurumForm.seoTitle,
+            seoDescription: kurumForm.seoDescription
         }
 
         if (editingKurum) {
@@ -141,10 +193,11 @@ export default function KurumModal({ isOpen, onClose, editingKurum, triggerToast
     }
 
     const hasCustomLogo = kurumForm.icon && (kurumForm.icon.startsWith('data:') || kurumForm.icon.startsWith('/') || kurumForm.icon.startsWith('http'))
+    const hasCustomCover = kurumForm.image && (kurumForm.image.startsWith('data:') || kurumForm.image.startsWith('/') || kurumForm.image.startsWith('http'))
 
     return (
         <div className={styles.modalOverlay}>
-            <div className={styles.modalContainer} style={{ maxWidth: '580px', borderRadius: '20px', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
+            <div className={styles.modalContainer} style={{ maxWidth: '1100px', borderRadius: '20px', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
                 <div className={styles.modalHeader} style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)', padding: '24px 28px', borderBottom: 'none' }}>
                     <h2 style={{ fontSize: '1.25rem', fontWeight: '900', color: 'white', margin: '0', letterSpacing: '-0.02em' }}>
                         <span>{editingKurum ? 'KURUM AYARLARINI DÜZENLE' : 'YENİ ÜST KURUM / BAKANLIK EKLE'}</span>
@@ -154,10 +207,14 @@ export default function KurumModal({ isOpen, onClose, editingKurum, triggerToast
                     </button>
                 </div>
                 <form onSubmit={handleSubmit}>
-                    <div className={styles.modalBody} style={{ padding: '28px 32px' }}>
-                        <div className={styles.adminForm} style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
+                    <div className={styles.modalBody} style={{ padding: '28px 32px', maxHeight: '75vh', overflowY: 'auto', overflowX: 'hidden' }}>
+                        <div className={styles.adminForm} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px' }}>
                             
-                            <div className={styles.formGroup}>
+                            {/* SOL KOLON - Temel Bilgiler */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                                <h3 style={{ fontSize: '14px', margin: 0, paddingBottom: '8px', borderBottom: '1px solid #e2e8f0', color: '#334155' }}>Temel Bilgiler</h3>
+                                
+                                <div className={styles.formGroup}>
                                 <label htmlFor="kurum-name" style={{ fontSize: '13px', fontWeight: '700', color: '#334155' }}>Kurum / Bakanlık Adı *</label>
                                 <input 
                                     id="kurum-name"
@@ -187,7 +244,7 @@ export default function KurumModal({ isOpen, onClose, editingKurum, triggerToast
                                         placeholder="Örn: genclik-ve-spor-bakanligi"
                                     />
                                     {isSlugPristine && kurumForm.name && (
-                                        <div style={{ color: '#6366f1', fontSize: '11px', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: '600' }}>
+                                        <div style={{ color: '#6366f1', fontSize: '11px', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: '600' }}>
                                             <Sparkles size={11} />
                                             <span>Başlıktan otomatik üretiliyor...</span>
                                         </div>
@@ -242,7 +299,7 @@ export default function KurumModal({ isOpen, onClose, editingKurum, triggerToast
                                         >
                                             <Upload size={24} style={{ color: kurumForm.color }} />
                                             <span style={{ fontSize: '13px', fontWeight: '800', color: '#475569' }}>Logo / Görsel Yükle</span>
-                                            <span style={{ fontSize: '10px', color: '#94a3b8' }}>PNG, JPG veya SVG (Maks. 10MB)</span>
+                                            <span style={{ fontSize: '10px', color: '#94a3b8' }}>PNG, JPG, SVG (Maks. 10MB)</span>
                                             <input 
                                                 id="kurum-logo-upload"
                                                 type="file"
@@ -251,9 +308,9 @@ export default function KurumModal({ isOpen, onClose, editingKurum, triggerToast
                                                 style={{ display: 'none' }}
                                             />
                                         </label>
-                                        <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', padding: '10px 14px', borderRadius: '8px', fontSize: '11px', color: '#1e40af', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '600' }}>
-                                            <Info size={14} style={{ color: '#2563eb' }} />
-                                            <span>Logo yüklemezseniz, sistem otomatik olarak şık bir dairesel Ay-Yıldız devlet arması üretecektir!</span>
+                                        <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', padding: '10px 14px', borderRadius: '8px', fontSize: '11.5px', color: '#1e40af', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '600', lineHeight: '1.4' }}>
+                                            <Info size={16} style={{ color: '#2563eb', flexShrink: 0 }} />
+                                            <span>Logo yüklemezseniz, sistem otomatik olarak şık bir dairesel devlet arması üretecektir.</span>
                                         </div>
                                     </div>
                                 )}
@@ -300,18 +357,92 @@ export default function KurumModal({ isOpen, onClose, editingKurum, triggerToast
                                 </div>
                             </div>
 
-                            <div className={styles.formGroup}>
-                                <label htmlFor="kurum-desc" style={{ fontSize: '13px', fontWeight: '700', color: '#334155' }}>Kurum / Sınav Kısa Açıklaması</label>
-                                <textarea 
-                                    id="kurum-desc"
-                                    value={kurumForm.description}
-                                    onChange={(e) => setKurumForm({ ...kurumForm, description: e.target.value })}
-                                    className={styles.formTextarea}
-                                    style={{ minHeight: '100px', padding: '12px 14px', fontSize: '13px' }}
-                                    placeholder="Sınav hazırlıkları, V.H.K.İ. ve Şef kadroları vb. sınavlar hakkında kısa bilgi..."
-                                />
+                                <div className={styles.formGroup}>
+                                    <label htmlFor="kurum-desc" style={{ fontSize: '13px', fontWeight: '700', color: '#334155' }}>Kurum / Sınav Kısa Açıklaması</label>
+                                    <textarea 
+                                        id="kurum-desc"
+                                        value={kurumForm.description}
+                                        onChange={(e) => setKurumForm({ ...kurumForm, description: e.target.value })}
+                                        className={styles.formTextarea}
+                                        style={{ minHeight: '100px', padding: '12px 14px', fontSize: '13px' }}
+                                        placeholder="Sınav hazırlıkları, V.H.K.İ. ve Şef kadroları vb. sınavlar hakkında kısa bilgi..."
+                                    />
+                                </div>
                             </div>
 
+                            {/* SAĞ KOLON - Gelişmiş Ayarlar */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                                <h3 style={{ fontSize: '14px', margin: 0, paddingBottom: '8px', borderBottom: '1px solid #e2e8f0', color: '#334155' }}>Görünüm & SEO Ayarları</h3>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                    <div className={styles.formGroup}>
+                                        <label style={{ fontSize: '13px', fontWeight: '700', color: '#334155' }}>Sıra Numarası</label>
+                                        <input 
+                                            type="number"
+                                            value={kurumForm.order}
+                                            onChange={(e) => setKurumForm({ ...kurumForm, order: parseInt(e.target.value) || 0 })}
+                                            className={styles.formInput}
+                                            style={{ padding: '10px 14px', fontSize: '14px' }}
+                                        />
+                                    </div>
+
+                                    <div className={styles.formGroup}>
+                                        <label style={{ fontSize: '13px', fontWeight: '700', color: '#334155' }}>Durum</label>
+                                        <select 
+                                            value={kurumForm.status}
+                                            onChange={(e) => setKurumForm({ ...kurumForm, status: e.target.value as 'active' | 'passive' })}
+                                            className={styles.formInput}
+                                            style={{ padding: '10px 14px', fontSize: '14px' }}
+                                        >
+                                            <option value="active">Aktif</option>
+                                            <option value="passive">Pasif (Gizli)</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className={styles.formGroup}>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '700', color: '#334155' }}>
+                                        <input 
+                                            type="checkbox" 
+                                            checked={kurumForm.showOnHomepage}
+                                            onChange={(e) => setKurumForm({ ...kurumForm, showOnHomepage: e.target.checked })}
+                                            style={{ width: '16px', height: '16px' }}
+                                        />
+                                        Ana Sayfa Vitrininde Göster
+                                    </label>
+                                </div>
+
+                                <div className={styles.formGroup}>
+                                    <label style={{ fontSize: '13px', fontWeight: '700', color: '#334155', marginBottom: '8px', display: 'block' }}>Kapak Görseli (Banner)</label>
+                                    {hasCustomCover ? (
+                                        <div style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden', height: '120px', border: '1px solid #e2e8f0' }}>
+                                            <img src={kurumForm.image} alt="Kapak Önizleme" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            <button 
+                                                type="button" 
+                                                onClick={() => setKurumForm(prev => ({ ...prev, image: '' }))} 
+                                                style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(239,68,68,0.9)', border: 'none', color: '#fff', borderRadius: '50%', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}
+                                            >
+                                                <X size={16} />
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <label 
+                                            style={{ 
+                                                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px', 
+                                                height: '120px', background: '#f8fafc', border: '2px dashed #cbd5e1', borderRadius: '12px', cursor: 'pointer', transition: 'all 0.2s' 
+                                            }}
+                                            onMouseEnter={(e) => e.currentTarget.style.borderColor = '#94a3b8'}
+                                            onMouseLeave={(e) => e.currentTarget.style.borderColor = '#cbd5e1'}
+                                        >
+                                            <Upload size={24} style={{ color: '#94a3b8' }} />
+                                            <span style={{ fontSize: '13px', fontWeight: '800', color: '#475569' }}>Kapak Resmi Yükle</span>
+                                            <span style={{ fontSize: '10px', color: '#94a3b8' }}>1920x400 Önerilir (Maks. 10MB)</span>
+                                            <input type="file" accept="image/*" onChange={handleCoverChange} style={{ display: 'none' }} />
+                                        </label>
+                                    )}
+                                </div>
+
+                            </div>
                         </div>
                     </div>
                     <div className={styles.modalFooter} style={{ padding: '20px 32px', background: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>

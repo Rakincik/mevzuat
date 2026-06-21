@@ -71,7 +71,11 @@ export default function ProductModal({ isOpen, onClose, editingProduct, triggerT
         order: '9999',
         features: [] as string[],
         whyUs: [] as { title: string; description: string }[],
-        badges: [] as string[]
+        badges: [] as string[],
+        status: 'active' as 'active' | 'passive',
+        showOnHomepage: true,
+        instructorName: '',
+        totalDuration: ''
     })
 
     // Turkish friendly slugify helper
@@ -134,22 +138,13 @@ export default function ProductModal({ isOpen, onClose, editingProduct, triggerT
                 exclusiveCoupons: (editingProduct as any).exclusiveCoupons || '',
                 exclusiveCouponsList: (editingProduct as any).exclusiveCouponsList || [],
                 order: editingProduct.order !== undefined ? editingProduct.order.toString() : '9999',
-                features: (editingProduct as any).features || [
-                    "Tamamı Video Çözümlü",
-                    "Mobil Uygulama Desteği",
-                    "7/24 Eğitmen Desteği",
-                    "1 Yıl Sınırsız Erişim"
-                ],
-                whyUs: (editingProduct as any).whyUs || [
-                    { title: "Güncel Mevzuat", description: "En son değişikliklere göre anında güncellenmiştir." },
-                    { title: "Çıkmış Soru Analizi", description: "Geçmiş sınav soruları detaylı çözümleriyle birlikte." },
-                    { title: "Uzman Eğitmen", description: "Alanında deneyimli eğitmenler tarafından hazırlanmıştır." }
-                ],
-                badges: (editingProduct as any).badges || [
-                    "Anında Erişim",
-                    "Güvenli Ödeme",
-                    "14 Gün İade"
-                ]
+                status: editingProduct.status || 'active',
+                showOnHomepage: editingProduct.showOnHomepage !== false,
+                instructorName: editingProduct.instructorName || '',
+                totalDuration: editingProduct.totalDuration || '',
+                features: (editingProduct as any).features || [],
+                whyUs: (editingProduct as any).whyUs || [],
+                badges: (editingProduct as any).badges || []
             })
             setIsSlugPristine(false)
             setSelectedAltCategoryOption(editingProduct.altKategoriSlug || 'new')
@@ -173,6 +168,10 @@ export default function ProductModal({ isOpen, onClose, editingProduct, triggerT
                 exclusiveCoupons: '',
                 exclusiveCouponsList: [] as ProductCoupon[],
                 order: '9999',
+                status: 'active',
+                showOnHomepage: true,
+                instructorName: '',
+                totalDuration: '',
                 features: [
                     "Tamamı Video Çözümlü",
                     "Mobil Uygulama Desteği",
@@ -586,6 +585,10 @@ export default function ProductModal({ isOpen, onClose, editingProduct, triggerT
             exclusiveCoupons: productForm.exclusiveCoupons.trim(),
             exclusiveCouponsList: productForm.exclusiveCouponsList || [],
             order: productForm.order ? parseInt(productForm.order) : 9999,
+            status: productForm.status,
+            showOnHomepage: productForm.showOnHomepage,
+            instructorName: productForm.instructorName.trim(),
+            totalDuration: productForm.totalDuration.trim(),
             features: productForm.features || [],
             whyUs: productForm.whyUs || [],
             badges: productForm.badges || []
@@ -609,13 +612,13 @@ export default function ProductModal({ isOpen, onClose, editingProduct, triggerT
 
     return (
         <div className={styles.modalOverlay}>
-            <div className={styles.modalContainer} style={{ maxWidth: '820px', width: '90%', maxHeight: '92vh', display: 'flex', flexDirection: 'column', padding: '0', borderRadius: '16px', overflow: 'hidden' }}>
+            <div className={styles.modalContainer} style={{ maxWidth: '1100px', width: '90%', maxHeight: '92vh', display: 'flex', flexDirection: 'column', padding: '0', borderRadius: '16px', overflow: 'hidden' }}>
                 
                 {/* Modal Header */}
                 <div className={styles.modalHeader} style={{ padding: '20px 28px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
                         <h2 style={{ fontSize: '1.25rem', fontWeight: '800', color: '#0f172a', margin: '0', letterSpacing: '-0.02em' }}>
-                            {editingProduct ? '📝 EĞİTİMİ DÜZENLE' : '✨ YENİ EĞİTİM EKLE'}
+                            {editingProduct ? 'EĞİTİMİ DÜZENLE' : 'YENİ EĞİTİM EKLE'}
                         </h2>
                         <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '500', marginTop: '2px', display: 'block' }}>
                             {editingProduct ? `Düzenlenen: ${editingProduct.name}` : 'Kataloğunuza yeni bir sınav hazırlık seti veya mevzuat eğitimi ekleyin.'}
@@ -793,6 +796,59 @@ export default function ProductModal({ isOpen, onClose, editingProduct, triggerT
                                         <div style={{ color: '#64748b', fontSize: '11px', marginTop: '4px', fontWeight: '600' }}>
                                             Katalogda bu sırayla listelenir.
                                         </div>
+                                    </div>
+                                </div>
+
+                                <div className={styles.formRow} style={{ gap: '24px', display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
+                                    <div className={styles.formGroup}>
+                                        <label htmlFor="prod-instructor" style={{ fontSize: '13px', fontWeight: '700', color: '#334155' }}>Eğitmen Adı / Profili (Opsiyonel)</label>
+                                        <input 
+                                            id="prod-instructor"
+                                            type="text"
+                                            value={productForm.instructorName}
+                                            onChange={(e) => setProductForm({ ...productForm, instructorName: e.target.value })}
+                                            className={styles.formInput}
+                                            style={{ padding: '12px 16px', fontSize: '14px' }}
+                                            placeholder="Örn: Dr. Ahmet Yılmaz"
+                                        />
+                                    </div>
+                                    <div className={styles.formGroup}>
+                                        <label htmlFor="prod-duration" style={{ fontSize: '13px', fontWeight: '700', color: '#334155' }}>Toplam Eğitim Süresi / Hacmi (Opsiyonel)</label>
+                                        <input 
+                                            id="prod-duration"
+                                            type="text"
+                                            value={productForm.totalDuration}
+                                            onChange={(e) => setProductForm({ ...productForm, totalDuration: e.target.value })}
+                                            className={styles.formInput}
+                                            style={{ padding: '12px 16px', fontSize: '14px' }}
+                                            placeholder="Örn: 45 Saat Video, 120 Sayfa PDF"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className={styles.formRow} style={{ gap: '24px', display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
+                                    <div className={styles.formGroup}>
+                                        <label style={{ fontSize: '13px', fontWeight: '700', color: '#334155' }}>Durum</label>
+                                        <select 
+                                            value={productForm.status}
+                                            onChange={(e) => setProductForm({ ...productForm, status: e.target.value as 'active' | 'passive' })}
+                                            className={styles.formSelect}
+                                            style={{ padding: '12px 16px', fontSize: '14px' }}
+                                        >
+                                            <option value="active">Aktif (Yayında)</option>
+                                            <option value="passive">Pasif (Gizli)</option>
+                                        </select>
+                                    </div>
+                                    <div className={styles.formGroup} style={{ display: 'flex', alignItems: 'center' }}>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '700', color: '#334155', marginTop: '24px' }}>
+                                            <input 
+                                                type="checkbox" 
+                                                checked={productForm.showOnHomepage}
+                                                onChange={(e) => setProductForm({ ...productForm, showOnHomepage: e.target.checked })}
+                                                style={{ width: '18px', height: '18px' }}
+                                            />
+                                            Ana Sayfa Vitrininde Göster
+                                        </label>
                                     </div>
                                 </div>
 

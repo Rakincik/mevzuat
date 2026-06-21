@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { Search, Plus, Star, Edit3, Trash2, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useApp, Product } from '@/context/AppContext'
+import { CustomSelect } from './CustomSelect'
 import styles from '../page.module.css'
 
 interface ProductsTabProps {
@@ -12,15 +13,17 @@ interface ProductsTabProps {
 }
 
 export default function ProductsTab({ triggerToast, onAddProduct, onEditProduct }: ProductsTabProps) {
-    const { products, kurumlar, featuredIds, toggleFeatured, deleteProduct, triggerConfirm } = useApp()
+    const { products, kurumlar, featuredIds, toggleFeatured, deleteProduct, triggerConfirm, bulkDeleteProducts } = useApp()
     const [searchQuery, setSearchQuery] = useState('')
     const [selectedKurum, setSelectedKurum] = useState('all')
     const [currentPage, setCurrentPage] = useState(1)
     const [itemsPerPage, setItemsPerPage] = useState<number | 'all'>(10)
+    const [selectedIds, setSelectedIds] = useState<string[]>([])
 
-    // Reset current page when search query, selected institution or page limit changes
+    // Reset current page and selections when search query, selected institution or page limit changes
     useEffect(() => {
         setCurrentPage(1)
+        setSelectedIds([])
     }, [searchQuery, selectedKurum, itemsPerPage])
 
 
@@ -103,36 +106,26 @@ export default function ProductsTab({ triggerToast, onAddProduct, onEditProduct 
                         <Search className={styles.searchIcon} size={16} />
                     </div>
 
-                    <div className={styles.selectBox}>
-                        <select
+                        <CustomSelect
                             value={selectedKurum}
-                            onChange={(e) => setSelectedKurum(e.target.value)}
-                            className={styles.selectInput}
-                        >
-                            <option value="all">Tüm Kurumlar</option>
-                            {kurumlar.map(k => (
-                                <option key={k.slug} value={k.slug}>{k.name}</option>
-                            ))}
-                        </select>
-                    </div>
+                            onChange={(val) => setSelectedKurum(val as string)}
+                            options={[
+                                { value: 'all', label: 'Tüm Kurumlar' },
+                                ...kurumlar.map(k => ({ value: k.slug, label: k.name }))
+                            ]}
+                        />
 
-                    <div className={styles.selectBox} style={{ minWidth: '130px' }}>
-                        <select
+                        <CustomSelect
                             value={itemsPerPage}
-                            onChange={(e) => {
-                                const val = e.target.value
-                                setItemsPerPage(val === 'all' ? 'all' : parseInt(val))
-                            }}
-                            className={styles.selectInput}
-                            title="Sayfa Başına Gösterilecek Eğitim Sayısı"
-                        >
-                            <option value={10}>10 Eğitim Göster</option>
-                            <option value={20}>20 Eğitim Göster</option>
-                            <option value={30}>30 Eğitim Göster</option>
-                            <option value={50}>50 Eğitim Göster</option>
-                            <option value="all">Tümünü Göster</option>
-                        </select>
-                    </div>
+                            onChange={(val) => setItemsPerPage(val === 'all' ? 'all' : parseInt(val as string))}
+                            options={[
+                                { value: 10, label: '10 Eğitim Göster' },
+                                { value: 20, label: '20 Eğitim Göster' },
+                                { value: 30, label: '30 Eğitim Göster' },
+                                { value: 50, label: '50 Eğitim Göster' },
+                                { value: 'all', label: 'Tümünü Göster' }
+                            ]}
+                        />
                 </div>
 
                 <button className={styles.btnAddItem} onClick={onAddProduct}>
@@ -144,7 +137,21 @@ export default function ProductsTab({ triggerToast, onAddProduct, onEditProduct 
             {/* Table View */}
             <div className={styles.tableCard}>
                 <div className={styles.tableHeader}>
-                    <div className={styles.colName}>EĞİTİM ADI / KURUM</div>
+                    <div className={styles.colName} style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                        <input 
+                            type="checkbox" 
+                            checked={paginatedProducts.length > 0 && selectedIds.length === paginatedProducts.length}
+                            onChange={(e) => {
+                                if (e.target.checked) {
+                                    setSelectedIds(paginatedProducts.map(p => p.id))
+                                } else {
+                                    setSelectedIds([])
+                                }
+                            }}
+                            style={{ cursor: 'pointer' }}
+                        />
+                        EĞİTİM ADI / KURUM
+                    </div>
                     <div className={styles.colCategory}>TÜRÜ</div>
                     <div className={styles.colPrice}>FİYAT</div>
                     <div className={styles.colAction} style={{ justifyContent: 'center' }}>İŞLEMLER</div>
@@ -155,17 +162,51 @@ export default function ProductsTab({ triggerToast, onAddProduct, onEditProduct 
                         const isFeatured = featuredIds.includes(product.id)
                         return (
                              <div key={product.id} className={`${styles.tableRow} ${isFeatured ? styles.rowFeatured : ''}`}>
-                                 <div className={styles.colName}>
-                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                                         <span style={{ fontSize: '10px', background: '#cbd5e1', color: '#1e293b', padding: '1px 5px', borderRadius: '4px', fontWeight: '800', fontFamily: 'monospace' }} title="Görüntüleme Sırası">
-                                             Sıra #{product.order !== undefined ? product.order : 9999}
-                                         </span>
+                                 <div className={styles.colName} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                                     <input 
+                                         type="checkbox" 
+                                         style={{ marginTop: '4px', cursor: 'pointer' }}
+                                         checked={selectedIds.includes(product.id)}
+                                         onChange={(e) => {
+                                             if (e.target.checked) {
+                                                 setSelectedIds(prev => [...prev, product.id])
+                                             } else {
+                                                 setSelectedIds(prev => prev.filter(id => id !== product.id))
+                                             }
+                                         }}
+                                     />
+                                     <div>
+                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                                             <span style={{ fontSize: '10px', background: '#cbd5e1', color: '#1e293b', padding: '1px 5px', borderRadius: '4px', fontWeight: '800', fontFamily: 'monospace' }} title="Görüntüleme Sırası">
+                                                 Sıra #{product.order !== undefined ? product.order : 9999}
+                                             </span>
+                                         {product.status === 'passive' && (
+                                            <span style={{ fontSize: '10px', background: '#fee2e2', color: '#ef4444', padding: '1px 5px', borderRadius: '4px', fontWeight: '800' }} title="Bu eğitim yayında değil">
+                                                PASİF
+                                            </span>
+                                         )}
+                                         {product.showOnHomepage === false && (
+                                            <span style={{ fontSize: '10px', background: '#fef3c7', color: '#d97706', padding: '1px 5px', borderRadius: '4px', fontWeight: '800' }} title="Ana sayfa vitrininde görünmez">
+                                                GİZLİ
+                                            </span>
+                                         )}
                                          <div className={styles.productName} style={{ fontWeight: '700' }}>{product.name}</div>
                                      </div>
                                      <div className={styles.productKurum}>
                                          {kurumlar.find(k => k.slug === product.kurumSlug)?.name || product.kurumSlug}
+                                         {product.instructorName && (
+                                            <span style={{ marginLeft: '8px', paddingLeft: '8px', borderLeft: '1px solid #cbd5e1', color: '#64748b', fontSize: '11px' }}>
+                                                Eğitmen: {product.instructorName}
+                                            </span>
+                                         )}
+                                         {product.totalDuration && (
+                                            <span style={{ marginLeft: '8px', paddingLeft: '8px', borderLeft: '1px solid #cbd5e1', color: '#64748b', fontSize: '11px' }}>
+                                                {product.totalDuration}
+                                            </span>
+                                         )}
                                      </div>
                                  </div>
+                                </div>
                                 <div className={styles.colCategory}>
                                     <span className={styles.catBadge}>{product.categoryName}</span>
                                 </div>
@@ -269,6 +310,34 @@ export default function ProductsTab({ triggerToast, onAddProduct, onEditProduct 
                     </div>
                 )}
             </div>
+            {/* Bulk Action Bar */}
+            {selectedIds.length > 0 && (
+                <div style={{ position: 'fixed', bottom: '30px', left: '50%', transform: 'translateX(-50%)', background: '#0f172a', padding: '16px 24px', borderRadius: '12px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)', display: 'flex', gap: '20px', alignItems: 'center', zIndex: 100 }}>
+                    <span style={{ color: 'white', fontWeight: 'bold' }}>{selectedIds.length} eğitim seçildi</span>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                        <button 
+                            className="btn btn-sm" 
+                            style={{ background: '#ef4444', color: 'white', border: 'none' }}
+                            onClick={() => {
+                                triggerConfirm({
+                                    title: 'Toplu Silme',
+                                    message: `Seçili ${selectedIds.length} eğitimi kalıcı olarak silmek istediğinize emin misiniz?`,
+                                    isDangerous: true,
+                                    confirmText: 'Evet, Sil',
+                                    onConfirm: () => {
+                                        bulkDeleteProducts(selectedIds)
+                                        setSelectedIds([])
+                                        triggerToast(`${selectedIds.length} eğitim başarıyla silindi.`)
+                                    }
+                                })
+                            }}
+                        >
+                            <Trash2 size={14} /> Toplu Sil
+                        </button>
+                        <button className="btn btn-outline btn-sm" style={{ color: 'white', borderColor: '#334155' }} onClick={() => setSelectedIds([])}>Vazgeç</button>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

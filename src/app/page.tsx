@@ -36,8 +36,24 @@ export default function Home() {
   const aboutPage = pages.find(p => p.id === 'about')
 
   // Dynamic featured products
-  const featuredProducts = products.filter(p => featuredIds.includes(p.id))
+  const featuredProducts = products
+    .filter(p => featuredIds.includes(p.id))
+    .filter(p => p.status !== 'passive' && p.showOnHomepage !== false)
+    .sort((a, b) => {
+      const orderA = a.order !== undefined ? a.order : 9999
+      const orderB = b.order !== undefined ? b.order : 9999
+      return orderA - orderB
+    })
   const showArrows = featuredProducts.length > 3
+
+  // Filter and sort kurumlar for homepage
+  const homepageKurumlar = kurumlar
+    .filter(k => k.status !== 'passive' && k.showOnHomepage !== false)
+    .sort((a, b) => {
+      const orderA = a.order !== undefined ? a.order : 999
+      const orderB = b.order !== undefined ? b.order : 999
+      return orderA - orderB
+    })
 
   return (
     <div className={styles.homeContainer}>
@@ -273,7 +289,7 @@ export default function Home() {
         </div>
 
         <div className={styles.kurumlarGrid}>
-          {kurumlar.map((kurum, index) => (
+          {homepageKurumlar.map((kurum, index) => (
             <KurumCard
               key={kurum.id}
               {...kurum}

@@ -5,12 +5,24 @@ import { allProducts as initialProducts, allKurumlar as initialKurumlar, Product
 import ConfirmModal from '@/components/ConfirmModal'
 export type { Product, Kurum }
 
+export interface Student {
+    id: string
+    name: string
+    email: string
+    phone: string
+    enrolledCourses: string[] // Array of Product IDs
+    status: 'active' | 'suspended'
+    createdAt: string
+}
+
 export interface AltKategori {
     id: string
     name: string
     slug: string
     description: string
     kurumSlugs: string[]
+    order?: number
+    status?: 'active' | 'passive'
 }
 
 export interface AppSettings {
@@ -27,6 +39,11 @@ export interface AppSettings {
     youtube?: string
     twitter?: string
     facebook?: string
+    bankAccountHolder?: string
+    bankName1?: string
+    bankIban1?: string
+    bankName2?: string
+    bankIban2?: string
 }
 
 export interface OrderItem {
@@ -81,7 +98,7 @@ export interface PageSection {
 }
 
 export interface EditablePage {
-    id: 'home' | 'about' | 'contact' | 'faq' | 'terms' | 'privacy' | 'shipping' | 'returns'
+    id: string // 'home' | 'about' | 'contact' | 'faq' | 'terms' | 'privacy' | 'shipping' | 'returns' or 'custom_123'
     title: string
     slug: string
     content?: string // For legal pages
@@ -118,13 +135,20 @@ export interface AppContextType {
     orders: Order[]
     coupons: Coupon[]
     pages: EditablePage[]
+    students: Student[]
+    addStudent: (student: Student) => void
+    updateStudent: (id: string, fields: Partial<Student>) => void
+    deleteStudent: (id: string) => void
+    bulkDeleteStudents: (ids: string[]) => void
     addProduct: (product: Product) => void
     updateProduct: (id: string, product: Partial<Product>) => void
     updateMultipleProducts: (updates: { id: string; fields: Partial<Product> }[]) => void
+    bulkDeleteProducts: (ids: string[]) => void
     deleteProduct: (id: string) => void
     addKurum: (kurum: Kurum) => void
     updateKurum: (id: string, kurum: Partial<Kurum>) => void
     deleteKurum: (id: string) => void
+    reorderKurumlar: (newKurumlarList: Kurum[]) => void
     addAltKategori: (cat: AltKategori) => void
     updateAltKategori: (id: string, cat: Partial<AltKategori>) => void
     deleteAltKategori: (id: string) => void
@@ -141,12 +165,15 @@ export interface AppContextType {
     resetAllData: () => void
     addOrder: (order: Order) => void
     updateOrderStatus: (id: string, status: Order['status']) => void
+    bulkUpdateOrders: (ids: string[], fields: Partial<Order>) => void
     deleteOrder: (id: string) => void
     addCoupon: (coupon: Coupon) => void
     deleteCoupon: (id: string) => void
     useCoupon: (code: string) => void
     useProductCoupon: (productId: string, code: string) => void
     updatePage: (id: EditablePage['id'], fields: Partial<EditablePage>) => void
+    addPage: (page: EditablePage) => void
+    deletePage: (id: string) => void
 }
 
 const defaultSettings: AppSettings = {
@@ -162,7 +189,12 @@ const defaultSettings: AppSettings = {
     instagram: "https://instagram.com/mevzuatadam",
     youtube: "https://youtube.com/mevzuatadam",
     twitter: "https://x.com/mevzuatadam",
-    facebook: ""
+    facebook: "",
+    bankAccountHolder: "Mevzuat Adam Eğitim A.Ş.",
+    bankName1: "Ziraat Bankası",
+    bankIban1: "TR12 0001 0000 0000 0000 0000 01",
+    bankName2: "Garanti BBVA",
+    bankIban2: "TR34 0006 2000 0000 0000 0000 02"
 }
 
 const defaultCoupons: Coupon[] = [
@@ -395,6 +427,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const [orders, setOrders] = useState<Order[]>([])
     const [coupons, setCoupons] = useState<Coupon[]>([]);
     const [pages, setPages] = useState<EditablePage[]>([]);
+    const [students, setStudents] = useState<Student[]>([]);
     const [initialized, setInitialized] = useState(false)
 
     const [confirmState, setConfirmState] = useState<{
@@ -510,6 +543,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     try { loadedAltKategoriler = JSON.parse(savedAltKategoriler) } catch (e) {}
                 }
                 setAltKategoriler(loadedAltKategoriler)
+
+                const savedStudents = localStorage.getItem('app_users')
+                let loadedStudents: Student[] = []
+                if (savedStudents) {
+                    try { loadedStudents = JSON.parse(savedStudents) } catch (e) {}
+                }
+                setStudents(loadedStudents)
             }
 
             loadLocalData()
@@ -770,6 +810,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                                 saveState('app_alt_kategoriler', healedAltCat)
                             }
                         }
+
+                        // Students
+                        if (dbData.app_users) {
+                            setStudents(dbData.app_users)
+                            localStorage.setItem('app_users', JSON.stringify(dbData.app_users))
+                        } else {
+                            const localStudents = localStorage.getItem('app_users')
+                            if (localStudents) {
+                                try {
+                                    const parsed = JSON.parse(localStudents)
+                                    saveState('app_users', parsed)
+                                    setStudents(parsed)
+                                } catch (e) {
+                                    saveState('app_users', [])
+                                }
+                            } else {
+                                saveState('app_users', [])
+                            }
+                        }
                     }
                 } catch (error) {
                     console.error('Error fetching fresh data from central database:', error)
@@ -852,9 +911,50 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
 
     const updateKurum = (id: string, updatedFields: Partial<Kurum>) => {
+        const targetKurum = kurumlar.find(k => k.id === id)
+        if (!targetKurum) return
+
+        const oldSlug = targetKurum.slug
+        const newSlug = updatedFields.slug || oldSlug
+
         const updated = kurumlar.map(k => k.id === id ? { ...k, ...updatedFields } : k)
         setKurumlar(updated)
         saveState('app_kurumlar', updated)
+
+        if (newSlug !== oldSlug) {
+            const updatedProducts = products.map(p => {
+                let changed = false
+                let pKurumSlug = p.kurumSlug
+                let pKurumSlugs = p.kurumSlugs ? [...p.kurumSlugs] : [pKurumSlug].filter(Boolean)
+
+                if (pKurumSlug === oldSlug) {
+                    pKurumSlug = newSlug
+                    changed = true
+                }
+                
+                const slugIndex = pKurumSlugs.indexOf(oldSlug)
+                if (slugIndex > -1) {
+                    pKurumSlugs[slugIndex] = newSlug
+                    changed = true
+                }
+
+                if (changed) {
+                    return { ...p, kurumSlug: pKurumSlug, kurumSlugs: pKurumSlugs }
+                }
+                return p
+            })
+            setProducts(updatedProducts)
+            saveState('app_products', updatedProducts)
+
+            const updatedAltKategoriler = altKategoriler.map(cat => {
+                if (cat.kurumSlugs && cat.kurumSlugs.includes(oldSlug)) {
+                    return { ...cat, kurumSlugs: cat.kurumSlugs.map(s => s === oldSlug ? newSlug : s) }
+                }
+                return cat
+            })
+            setAltKategoriler(updatedAltKategoriler)
+            saveState('app_alt_kategoriler', updatedAltKategoriler)
+        }
     }
 
     const deleteKurum = (id: string) => {
@@ -869,6 +969,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const updatedProducts = products.filter(p => p.kurumSlug !== targetKurum.slug)
         setProducts(updatedProducts)
         saveState('app_products', updatedProducts)
+
+        // Clean up altKategoriler mappings
+        const updatedAltKategoriler = altKategoriler.map(cat => {
+            if (cat.kurumSlugs.includes(targetKurum.slug)) {
+                return { ...cat, kurumSlugs: cat.kurumSlugs.filter(s => s !== targetKurum.slug) }
+            }
+            return cat
+        }).filter(cat => cat.kurumSlugs.length > 0)
+        
+        setAltKategoriler(updatedAltKategoriler)
+        saveState('app_alt_kategoriler', updatedAltKategoriler)
     }
 
     const addAltKategori = (cat: AltKategori) => {
@@ -1083,8 +1194,69 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
     }
 
+    const addPage = (page: EditablePage) => {
+        const updated = [...pages, page]
+        setPages(updated)
+        saveState('app_pages', updated)
+    }
+
+    const deletePage = (id: string) => {
+        const updated = pages.filter(p => p.id !== id)
+        setPages(updated)
+        saveState('app_pages', updated)
+    }
+
+    const addStudent = (student: Student) => {
+        const updated = [...students, student]
+        setStudents(updated)
+        saveState('app_users', updated)
+    }
+
+    const updateStudent = (id: string, fields: Partial<Student>) => {
+        const updated = students.map(s => s.id === id ? { ...s, ...fields } : s)
+        setStudents(updated)
+        saveState('app_users', updated)
+    }
+
+    const deleteStudent = (id: string) => {
+        const updated = students.filter(s => s.id !== id)
+        setStudents(updated)
+        saveState('app_users', updated)
+    }
+
+    const reorderKurumlar = (newKurumlarList: Kurum[]) => {
+        setKurumlar(newKurumlarList)
+        saveState('app_kurumlar', newKurumlarList)
+    }
+
+    const bulkUpdateOrders = (ids: string[], fields: Partial<Order>) => {
+        const updated = orders.map(o => ids.includes(o.id) ? { ...o, ...fields } : o)
+        setOrders(updated)
+        saveState('app_orders', updated)
+    }
+
+    const bulkDeleteStudents = (ids: string[]) => {
+        const updated = students.filter(s => !ids.includes(s.id))
+        setStudents(updated)
+        saveState('app_users', updated)
+    }
+
+    const bulkDeleteProducts = (ids: string[]) => {
+        const updated = products.filter(p => !ids.includes(p.id))
+        setProducts(updated)
+        saveState('app_products', updated)
+        
+        const updatedFeatured = featuredIds.filter(fId => !ids.includes(fId))
+        setFeaturedIds(updatedFeatured)
+        saveState('app_featured', updatedFeatured)
+    }
+
     return (
         <AppContext.Provider value={{
+            students,
+            addStudent,
+            updateStudent,
+            deleteStudent,
             products,
             kurumlar,
             altKategoriler,
@@ -1114,7 +1286,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             useCoupon,
             useProductCoupon,
             updatePage,
-            triggerConfirm
+            addPage,
+            deletePage,
+            triggerConfirm,
+            reorderKurumlar,
+            bulkUpdateOrders,
+            bulkDeleteStudents,
+            bulkDeleteProducts
         }}>
             {initialized ? (
                 <>

@@ -48,7 +48,7 @@ export default function CustomPageDetail() {
             </div>
 
             {/* Template: Legal Sözleşme Şablonu */}
-            {page.id !== 'about' && page.id !== 'contact' && page.id !== 'faq' && (
+            {page.id !== 'about' && page.id !== 'contact' && page.id !== 'faq' && !page.id.startsWith('custom_') && (
                 <div className={styles.legalLayout}>
                     {/* Left Sticky Nav Tree */}
                     <aside className={styles.legalSidebar}>
@@ -80,6 +80,21 @@ export default function CustomPageDetail() {
                             dangerouslySetInnerHTML={{ __html: page.content || '' }} 
                         />
                     </main>
+                </div>
+            )}
+
+            {/* Template: Özel (Dinamik) Sayfa Şablonu */}
+            {page.id.startsWith('custom_') && (
+                <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+                    <h1 className={styles.pageTitle} style={{ textAlign: 'center', marginBottom: '8px', fontSize: '32px' }}>{page.title}</h1>
+                    <p style={{ textAlign: 'center', color: '#64748b', fontSize: '14px', marginBottom: '40px' }}>Son Güncelleme: {new Date(page.createdAt).toLocaleDateString('tr-TR')}</p>
+                    
+                    <div style={{ padding: '40px', background: 'white', borderRadius: '16px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0' }}>
+                        <div 
+                            className={styles.richText}
+                            dangerouslySetInnerHTML={{ __html: page.content || '' }} 
+                        />
+                    </div>
                 </div>
             )}
 

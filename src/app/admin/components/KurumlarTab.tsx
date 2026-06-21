@@ -4,6 +4,22 @@ import React, { useState, useEffect } from 'react'
 import { Plus, Edit3, Trash2, AlertCircle, Landmark, FolderOpen, Layers, Info } from 'lucide-react'
 import { useApp, Kurum, AltKategori } from '@/context/AppContext'
 import styles from '../page.module.css'
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { SortableKurumItem } from './SortableKurumItem';
 
 interface KurumlarTabProps {
     triggerToast: (message: string) => void
@@ -14,25 +30,62 @@ interface KurumlarTabProps {
 }
 
 export default function KurumlarTab({ triggerToast, onAddKurum, onEditKurum, onAddAltKategori, onEditAltKategori }: KurumlarTabProps) {
-    const { kurumlar, altKategoriler, products, deleteKurum, deleteAltKategori, triggerConfirm } = useApp()
+    const { kurumlar, altKategoriler, products, deleteKurum, deleteAltKategori, triggerConfirm, reorderKurumlar } = useApp()
     const [activeKurumSlug, setActiveKurumSlug] = useState<string>('')
 
     // Set first institution as active by default
     useEffect(() => {
         if (kurumlar.length > 0 && !activeKurumSlug) {
+            // we will find the first based on sorted order below, but for now just picking [0] is fine
             setActiveKurumSlug(kurumlar[0].slug)
         }
     }, [kurumlar, activeKurumSlug])
 
+    const sortedKurumlar = [...kurumlar].sort((a, b) => {
+        const orderA = a.order !== undefined ? a.order : 999
+        const orderB = b.order !== undefined ? b.order : 999
+        return orderA - orderB
+    })
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 5,
+            },
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+
+        if (over && active.id !== over.id) {
+            const oldIndex = sortedKurumlar.findIndex((k) => k.id === active.id);
+            const newIndex = sortedKurumlar.findIndex((k) => k.id === over.id);
+
+            const reorderedList = arrayMove(sortedKurumlar, oldIndex, newIndex);
+            
+            const updatedList = reorderedList.map((kurum, index) => ({
+                ...kurum,
+                order: index + 1
+            }));
+
+            reorderKurumlar(updatedList);
+            triggerToast('Sıralama güncellendi.');
+        }
+    };
+
     const handleKurumDelete = (id: string, name: string) => {
         triggerConfirm({
             title: 'Kurumu Sil',
-            message: `"${name}" kurumunu silmek istediğinize emin misiniz? Bu kurum silindiğinde, bu kuruma ait TÜM eğitimler de veri bütünlüğünü korumak adına kalıcı olarak silinecektir!`,
+            message: `"${name}" kurumunu silmek istediğinize emin misiniz? SADECE bu kuruma ait olan özel eğitimler kalıcı olarak silinecektir. Birden fazla kuruma bağlı olan ortak eğitimlerin ise sadece bu kurumla olan bağı koparılacaktır.`,
             confirmText: 'Kurumu Sil',
             isDangerous: true,
             onConfirm: () => {
                 deleteKurum(id)
-                triggerToast('Kurum ve ilişkili eğitimleri silindi.')
+                triggerToast('Kurum başarıyla silindi ve ilişkili eğitimler güncellendi.')
                 if (activeKurumSlug === name) {
                     setActiveKurumSlug('')
                 }
@@ -58,7 +111,11 @@ export default function KurumlarTab({ triggerToast, onAddKurum, onEditKurum, onA
     // Filter subcategories belonging to active institution
     const activeSubcategories = altKategoriler.filter(cat => 
         activeKurum ? cat.kurumSlugs.includes(activeKurum.slug) : false
-    )
+    ).sort((a, b) => {
+        const orderA = a.order !== undefined ? a.order : 999
+        const orderB = b.order !== undefined ? b.order : 999
+        return orderA - orderB
+    })
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -87,7 +144,7 @@ export default function KurumlarTab({ triggerToast, onAddKurum, onEditKurum, onA
                     {/* LEFT COLUMN: Ministries / Upper Institutions */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <h3 style={{ fontSize: '14px', fontWeight: '800', color: '#475569', margin: '0', textTransform: 'uppercase', letterSpacing: '0.03em' }}>🏛️ Üst Kurumlar ({kurumlar.length})</h3>
+                            <h3 style={{ fontSize: '14px', fontWeight: '800', color: '#475569', margin: '0', textTransform: 'uppercase', letterSpacing: '0.03em' }}>🏛️ Üst Kurumlar ({sortedKurumlar.length})</h3>
                             <button 
                                 className="btn btn-outline btn-sm" 
                                 onClick={onAddKurum}
@@ -99,61 +156,21 @@ export default function KurumlarTab({ triggerToast, onAddKurum, onEditKurum, onA
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '68vh', overflowY: 'auto', paddingRight: '4px' }}>
-                            {kurumlar.map(kurum => {
-                                const isActive = activeKurum && activeKurum.id === kurum.id
-                                const count = products.filter(p => p.kurumSlug === kurum.slug || (p.kurumSlugs && p.kurumSlugs.includes(kurum.slug))).length
-                                
-                                return (
-                                    <div 
-                                        key={kurum.id} 
-                                        onClick={() => setActiveKurumSlug(kurum.slug)}
-                                        style={{ 
-                                            padding: '16px', 
-                                            background: isActive ? '#f8fafc' : 'white', 
-                                            border: isActive ? `2px solid ${kurum.color || '#3b82f6'}` : '1px solid #e2e8f0',
-                                            borderLeft: `6px solid ${kurum.color || '#3b82f6'}`,
-                                            borderRadius: '12px', 
-                                            cursor: 'pointer',
-                                            transition: 'all 0.2s ease',
-                                            boxShadow: isActive ? '0 8px 20px -8px rgba(0,0,0,0.08)' : 'none',
-                                            transform: isActive ? 'translateY(-1px)' : 'none'
-                                        }}
-                                    >
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                                            <h4 style={{ fontSize: '13px', fontWeight: '800', color: '#0f172a', margin: '0', lineHeight: '1.3', flexGrow: 1, paddingRight: '8px' }}>{kurum.name}</h4>
-                                            
-                                            <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
-                                                <button 
-                                                    style={{ border: 'none', background: 'none', color: '#64748b', cursor: 'pointer', padding: '4px' }}
-                                                    onClick={() => onEditKurum(kurum)}
-                                                    title="Kurum Ayarlarını Düzenle"
-                                                >
-                                                    <Edit3 size={13} />
-                                                </button>
-                                                {kurum.slug !== 'genel-gys' && (
-                                                    <button 
-                                                        style={{ border: 'none', background: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}
-                                                        onClick={() => handleKurumDelete(kurum.id, kurum.name)}
-                                                        title="Kurumu Sil"
-                                                    >
-                                                        <Trash2 size={13} />
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        <p style={{ fontSize: '11px', color: '#64748b', margin: '0 0 10px 0', lineHeight: '1.4' }}>{kurum.description || 'Açıklama belirtilmemiş.'}</p>
-
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '10px', fontWeight: '800', color: '#94a3b8' }}>
-                                            <span style={{ display: 'flex', alignItems: 'center', gap: '3px', color: kurum.color || '#3b82f6' }}>
-                                                <Landmark size={10} />
-                                                <span>AKTİF SEÇİM</span>
-                                            </span>
-                                            <span style={{ background: '#f1f5f9', padding: '3px 8px', borderRadius: '20px', color: '#475569' }}>{count} EĞİTİM</span>
-                                        </div>
-                                    </div>
-                                )
-                            })}
+                            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                                <SortableContext items={sortedKurumlar.map(k => k.id)} strategy={verticalListSortingStrategy}>
+                                    {sortedKurumlar.map(kurum => (
+                                        <SortableKurumItem 
+                                            key={kurum.id}
+                                            kurum={kurum}
+                                            isActive={activeKurum && activeKurum.id === kurum.id}
+                                            products={products}
+                                            onClick={() => setActiveKurumSlug(kurum.slug)}
+                                            onEdit={() => onEditKurum(kurum)}
+                                            onDelete={() => handleKurumDelete(kurum.id, kurum.name)}
+                                        />
+                                    ))}
+                                </SortableContext>
+                            </DndContext>
                         </div>
                     </div>
 
@@ -203,6 +220,12 @@ export default function KurumlarTab({ triggerToast, onAddKurum, onEditKurum, onA
                                             }}
                                         >
                                             <div>
+                                                <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
+                                                    <span style={{ fontSize: '9px', background: '#e2e8f0', color: '#475569', padding: '2px 6px', borderRadius: '4px', fontWeight: '800' }}>#{subcat.order !== undefined ? subcat.order : 999}</span>
+                                                    {subcat.status === 'passive' && (
+                                                        <span style={{ fontSize: '9px', background: '#fee2e2', color: '#ef4444', padding: '2px 6px', borderRadius: '4px', fontWeight: '800' }}>PASİF</span>
+                                                    )}
+                                                </div>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
                                                     <h4 style={{ fontSize: '14px', fontWeight: '800', color: '#1e293b', margin: '0', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                                         <FolderOpen size={14} style={{ color: activeKurum.color }} />

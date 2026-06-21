@@ -45,7 +45,7 @@ export default function ProductsPage() {
 }
 
 function ProductsPageContent() {
-    const { products: allProducts, kurumlar: allKurumlar } = useApp()
+    const { products: allProducts, kurumlar: allKurumlar, altKategoriler } = useApp()
     const searchParams = useSearchParams()
 
     const categoryParam = searchParams.get('category')
@@ -57,6 +57,7 @@ function ProductsPageContent() {
     // Filter states
     const [searchQuery, setSearchQuery] = useState('')
     const [selectedKurumlar, setSelectedKurumlar] = useState<string[]>([])
+    const [selectedAltKategoriler, setSelectedAltKategoriler] = useState<string[]>([])
     const [selectedCategories, setSelectedCategories] = useState<string[]>([])
     const [priceRange, setPriceRange] = useState({ min: 0, max: 10000 })
     const [sortBy, setSortBy] = useState('önerilen')
@@ -67,6 +68,11 @@ function ProductsPageContent() {
 
     // Dynamically retrieve unique categories from allProducts
     const uniqueCategories = Array.from(new Set(allProducts.map(p => p.categoryName)))
+    
+    // Dynamically filter altKategoriler based on selected Kurumlar (if any are selected)
+    const displayAltKategoriler = selectedKurumlar.length > 0 
+        ? (altKategoriler || []).filter(ak => selectedKurumlar.some(s => ak.kurumSlugs.includes(s)))
+        : (altKategoriler || [])
 
     const sortOptions = [
         { value: 'önerilen', label: 'Önerilen Sıralama', icon: <Sparkles size={14} /> },
@@ -122,6 +128,7 @@ function ProductsPageContent() {
     const handleResetFilters = () => {
         setSearchQuery('')
         setSelectedKurumlar([])
+        setSelectedAltKategoriler([])
         setSelectedCategories([])
         setPriceRange({ min: 0, max: 10000 })
         setSortBy('önerilen')
@@ -139,6 +146,10 @@ function ProductsPageContent() {
             selectedKurumlar.includes(product.kurumSlug) || 
             (product.kurumSlugs && product.kurumSlugs.some(slug => selectedKurumlar.includes(slug)))
 
+        // Alt Kategori (Dersler) matching
+        const matchesAltKategori = selectedAltKategoriler.length === 0 ||
+            (product.altKategoriSlug && selectedAltKategoriler.includes(product.altKategoriSlug))
+
         // Category matching
         const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(product.categoryName)
 
@@ -146,7 +157,7 @@ function ProductsPageContent() {
         const finalPrice = product.salePrice || product.price
         const matchesPrice = finalPrice >= priceRange.min && finalPrice <= priceRange.max
 
-        return matchesSearch && matchesKurum && matchesCategory && matchesPrice
+        return matchesSearch && matchesKurum && matchesAltKategori && matchesCategory && matchesPrice
     })
 
     // Dynamic sorting
@@ -297,6 +308,34 @@ function ProductsPageContent() {
                                         })}
                                     </div>
                                 </div>
+
+                                {/* Alt Kategori (Dersler) facet */}
+                                {displayAltKategoriler.length > 0 && (
+                                    <div className={styles.facetGroup}>
+                                        <h4 className={styles.facetTitle}>Dersler / Konular</h4>
+                                        <div className={styles.checkboxList}>
+                                            {displayAltKategoriler.map(altKat => {
+                                                const isChecked = selectedAltKategoriler.includes(altKat.slug)
+                                                return (
+                                                    <label key={altKat.slug} className={styles.checkboxLabel}>
+                                                        <div className={styles.checkboxWrapper}>
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={isChecked}
+                                                                onChange={() => toggleFilter(altKat.slug, selectedAltKategoriler, setSelectedAltKategoriler)}
+                                                                className={styles.realCheckbox}
+                                                            />
+                                                            <div className={`${styles.customCheckbox} ${isChecked ? styles.checkedCheckbox : ''}`}>
+                                                                {isChecked && <Check size={10} strokeWidth={4} />}
+                                                            </div>
+                                                        </div>
+                                                        <span className={styles.checkboxText}>{altKat.name}</span>
+                                                    </label>
+                                                )
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
 
                                 {/* Category facet */}
                                 <div className={styles.facetGroup}>

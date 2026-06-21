@@ -20,7 +20,9 @@ export default function AltKategoriModal({ isOpen, onClose, editingAltKategori, 
         name: '',
         slug: '',
         description: '',
-        kurumSlugs: [] as string[]
+        kurumSlugs: [] as string[],
+        order: 999,
+        status: 'active' as 'active' | 'passive'
     })
 
     // Sync form state when modal opens/changes
@@ -30,7 +32,9 @@ export default function AltKategoriModal({ isOpen, onClose, editingAltKategori, 
                 name: editingAltKategori.name,
                 slug: editingAltKategori.slug,
                 description: editingAltKategori.description || '',
-                kurumSlugs: editingAltKategori.kurumSlugs || []
+                kurumSlugs: editingAltKategori.kurumSlugs || [],
+                order: editingAltKategori.order !== undefined ? editingAltKategori.order : 999,
+                status: editingAltKategori.status || 'active'
             })
             setIsSlugPristine(false)
         } else {
@@ -38,7 +42,9 @@ export default function AltKategoriModal({ isOpen, onClose, editingAltKategori, 
                 name: '',
                 slug: '',
                 description: '',
-                kurumSlugs: initialKurumSlug ? [initialKurumSlug] : []
+                kurumSlugs: initialKurumSlug ? [initialKurumSlug] : [],
+                order: 999,
+                status: 'active'
             })
             setIsSlugPristine(true)
         }
@@ -108,7 +114,9 @@ export default function AltKategoriModal({ isOpen, onClose, editingAltKategori, 
             name: catForm.name.trim(),
             slug: calculatedSlug,
             description: catForm.description.trim(),
-            kurumSlugs: catForm.kurumSlugs
+            kurumSlugs: catForm.kurumSlugs,
+            order: catForm.order,
+            status: catForm.status
         }
 
         if (editingAltKategori) {
@@ -211,6 +219,32 @@ export default function AltKategoriModal({ isOpen, onClose, editingAltKategori, 
                                             </label>
                                         )
                                     })}
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                <div className={styles.formGroup}>
+                                    <label style={{ fontSize: '13px', fontWeight: '700', color: '#334155' }}>Sıra Numarası</label>
+                                    <input 
+                                        type="number"
+                                        value={catForm.order}
+                                        onChange={(e) => setCatForm({ ...catForm, order: parseInt(e.target.value) || 0 })}
+                                        className={styles.formInput}
+                                        style={{ padding: '10px 14px', fontSize: '14px' }}
+                                    />
+                                </div>
+
+                                <div className={styles.formGroup}>
+                                    <label style={{ fontSize: '13px', fontWeight: '700', color: '#334155' }}>Durum</label>
+                                    <select 
+                                        value={catForm.status}
+                                        onChange={(e) => setCatForm({ ...catForm, status: e.target.value as 'active' | 'passive' })}
+                                        className={styles.formInput}
+                                        style={{ padding: '10px 14px', fontSize: '14px' }}
+                                    >
+                                        <option value="active">Aktif</option>
+                                        <option value="passive">Pasif (Gizli)</option>
+                                    </select>
                                 </div>
                             </div>
 

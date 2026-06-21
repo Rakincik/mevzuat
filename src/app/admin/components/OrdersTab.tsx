@@ -3,6 +3,7 @@
 import React, { useState } from 'react'
 import { Search, Info, Trash2, AlertCircle } from 'lucide-react'
 import { useApp, Order } from '@/context/AppContext'
+import { CustomSelect } from './CustomSelect'
 import styles from '../page.module.css'
 
 interface OrdersTabProps {
@@ -11,9 +12,10 @@ interface OrdersTabProps {
 }
 
 export default function OrdersTab({ triggerToast, onViewDetails }: OrdersTabProps) {
-    const { orders, updateOrderStatus, deleteOrder, triggerConfirm } = useApp()
+    const { orders, updateOrderStatus, deleteOrder, triggerConfirm, bulkUpdateOrders } = useApp()
     const [searchQuery, setSearchQuery] = useState('')
     const [selectedOrderStatus, setSelectedOrderStatus] = useState('all')
+    const [selectedIds, setSelectedIds] = useState<string[]>([])
 
     const handleStatusChange = (orderId: string, status: Order['status']) => {
         updateOrderStatus(orderId, status)
@@ -44,6 +46,11 @@ export default function OrdersTab({ triggerToast, onViewDetails }: OrdersTabProp
         return matchesStatus && matchesSearch
     })
 
+    // Reset selection when filters change
+    React.useEffect(() => {
+        setSelectedIds([])
+    }, [searchQuery, selectedOrderStatus])
+
     return (
         <div>
             <div className={styles.toolbar}>
@@ -60,24 +67,38 @@ export default function OrdersTab({ triggerToast, onViewDetails }: OrdersTabProp
                     </div>
 
                     <div className={styles.selectBox}>
-                        <select
+                        <CustomSelect 
                             value={selectedOrderStatus}
-                            onChange={(e) => setSelectedOrderStatus(e.target.value)}
-                            className={styles.selectInput}
-                        >
-                            <option value="all">Tüm Durumlar</option>
-                            <option value="PENDING">Beklemede (Ödeme Bekliyor)</option>
-                            <option value="PAID">Ödendi (Aktif)</option>
-                            <option value="SHIPPED">Kargolandı</option>
-                            <option value="DELIVERED">Teslim Edildi</option>
-                            <option value="CANCELLED">İptal Edildi</option>
-                        </select>
+                            onChange={(val) => setSelectedOrderStatus(val as string)}
+                            options={[
+                                { value: 'all', label: 'Tüm Durumlar' },
+                                { value: 'PENDING', label: 'Beklemede (Ödeme Bekliyor)' },
+                                { value: 'PAID', label: 'Ödendi (Aktif)' },
+                                { value: 'SHIPPED', label: 'Kargolandı' },
+                                { value: 'DELIVERED', label: 'Teslim Edildi' },
+                                { value: 'CANCELLED', label: 'İptal Edildi' },
+                            ]}
+                        />
                     </div>
                 </div>
             </div>
 
             <div className={styles.tableCard}>
-                <div className={styles.tableHeader} style={{ gridTemplateColumns: '1.2fr 1.5fr 1fr 1fr 100px' }}>
+                <div className={styles.tableHeader} style={{ gridTemplateColumns: '40px 1.2fr 1.5fr 1fr 1fr 100px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                        <input 
+                            type="checkbox" 
+                            checked={filteredOrders.length > 0 && selectedIds.length === filteredOrders.length}
+                            onChange={(e) => {
+                                if (e.target.checked) {
+                                    setSelectedIds(filteredOrders.map(o => o.id))
+                                } else {
+                                    setSelectedIds([])
+                                }
+                            }}
+                            style={{ cursor: 'pointer' }}
+                        />
+                    </div>
                     <div>SİPARİŞ ID / TARİH</div>
                     <div>MÜŞTERİ BİLGİLERİ</div>
                     <div>TOPLAM TUTAR</div>
@@ -87,7 +108,21 @@ export default function OrdersTab({ triggerToast, onViewDetails }: OrdersTabProp
 
                 <div className={styles.tableBody}>
                     {filteredOrders.map(order => (
-                        <div key={order.id} className={styles.tableRow} style={{ gridTemplateColumns: '1.2fr 1.5fr 1fr 1fr 100px' }}>
+                        <div key={order.id} className={styles.tableRow} style={{ gridTemplateColumns: '40px 1.2fr 1.5fr 1fr 1fr 100px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center' }}>
+                                <input 
+                                    type="checkbox" 
+                                    style={{ cursor: 'pointer' }}
+                                    checked={selectedIds.includes(order.id)}
+                                    onChange={(e) => {
+                                        if (e.target.checked) {
+                                            setSelectedIds(prev => [...prev, order.id])
+                                        } else {
+                                            setSelectedIds(prev => prev.filter(id => id !== order.id))
+                                        }
+                                    }}
+                                />
+                            </div>
                             <div className={styles.colName}>
                                 <span className={styles.productName} style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>{order.id}</span>
                                 <span style={{ fontSize: '11px', color: '#64748b' }}>
@@ -142,6 +177,44 @@ export default function OrdersTab({ triggerToast, onViewDetails }: OrdersTabProp
                     )}
                 </div>
             </div>
+
+            {/* Bulk Action Bar */}
+            {selectedIds.length > 0 && (
+                <div style={{ position: 'fixed', bottom: '30px', left: '50%', transform: 'translateX(-50%)', background: '#0f172a', padding: '16px 24px', borderRadius: '12px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)', display: 'flex', gap: '20px', alignItems: 'center', zIndex: 100 }}>
+                    <span style={{ color: 'white', fontWeight: 'bold' }}>{selectedIds.length} sipariş seçildi</span>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <span style={{ color: '#94a3b8', fontSize: '12px', marginRight: '8px' }}>Toplu Durum Değiştir:</span>
+                        <select
+                            onChange={(e) => {
+                                if (e.target.value) {
+                                    triggerConfirm({
+                                        title: 'Toplu Durum Güncelleme',
+                                        message: `Seçili ${selectedIds.length} siparişin durumunu güncellemek istediğinize emin misiniz?`,
+                                        confirmText: 'Evet, Güncelle',
+                                        onConfirm: () => {
+                                            bulkUpdateOrders(selectedIds, { status: e.target.value as Order['status'] })
+                                            setSelectedIds([])
+                                            triggerToast(`${selectedIds.length} sipariş başarıyla güncellendi.`)
+                                        }
+                                    })
+                                    e.target.value = "" // reset select after action
+                                }
+                            }}
+                            className={styles.selectInput}
+                            style={{ background: '#1e293b', color: 'white', border: '1px solid #334155', padding: '6px 12px', borderRadius: '6px', fontSize: '12px' }}
+                            defaultValue=""
+                        >
+                            <option value="" disabled>Durum Seçin...</option>
+                            <option value="PENDING">BEKLEMEDE</option>
+                            <option value="PAID">ÖDENDİ</option>
+                            <option value="SHIPPED">KARGOLANDI</option>
+                            <option value="DELIVERED">TESLİM EDİLDİ</option>
+                            <option value="CANCELLED">İPTAL EDİLDİ</option>
+                        </select>
+                        <button className="btn btn-outline btn-sm" style={{ color: 'white', borderColor: '#334155', marginLeft: '12px' }} onClick={() => setSelectedIds([])}>Vazgeç</button>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

@@ -1,7 +1,7 @@
 'use client'
 
-import React from 'react'
-import { Star, ChevronUp, ChevronDown, Trash2, Sparkles, AlertCircle, Plus } from 'lucide-react'
+import React, { useState, useRef, useEffect } from 'react'
+import { Star, ChevronUp, ChevronDown, Trash2, Sparkles, AlertCircle, Plus, ChevronDown as ChevronDownIcon } from 'lucide-react'
 import { useApp } from '@/context/AppContext'
 import styles from '../page.module.css'
 
@@ -11,6 +11,19 @@ interface FeaturedTabProps {
 
 export default function FeaturedTab({ triggerToast }: FeaturedTabProps) {
     const { products, kurumlar, featuredIds, toggleFeatured, updateMultipleProducts } = useApp()
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+    const dropdownRef = useRef<HTMLDivElement>(null)
+
+    // Close dropdown when clicked outside
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsDropdownOpen(false)
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside)
+        return () => document.removeEventListener("mousedown", handleClickOutside)
+    }, [])
 
     // Filter active featured products (automatically sorted in AppContext)
     const featuredProducts = products.filter(product => featuredIds.includes(product.id))
@@ -69,26 +82,44 @@ export default function FeaturedTab({ triggerToast }: FeaturedTabProps) {
                     </p>
                 </div>
 
-                {/* Quick Add Dropdown Selector */}
-                <div className={styles.selectBox} style={{ minWidth: '260px', margin: 0 }}>
-                    <select
-                        value=""
-                        onChange={(e) => {
-                            const val = e.target.value
-                            if (val) {
-                                toggleFeatured(val)
-                                triggerToast('Eğitim başarıyla vitrine eklendi!')
-                                e.target.value = "" // reset dropdown selection
-                            }
-                        }}
-                        className={styles.selectInput}
-                        style={{ border: '2px solid var(--color-primary)', boxShadow: '3px 3px 0px 0px var(--color-primary)', fontWeight: '800', fontSize: '13px' }}
+                {/* Quick Add Custom Dropdown */}
+                <div ref={dropdownRef} style={{ position: 'relative', minWidth: '280px' }}>
+                    <button
+                        onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                        className="btn btn-primary"
+                        style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', fontSize: '13px', fontWeight: '700' }}
                     >
-                        <option value="">➕ Vitrine Yeni Eğitim Ekle...</option>
-                        {nonFeaturedProducts.map(p => (
-                            <option key={p.id} value={p.id}>{p.name}</option>
-                        ))}
-                    </select>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Plus size={16} /> Vitrine Yeni Eğitim Ekle
+                        </span>
+                        <ChevronDownIcon size={16} style={{ transform: isDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+                    </button>
+
+                    {isDropdownOpen && (
+                        <div style={{ position: 'absolute', top: 'calc(100% + 8px)', left: 0, right: 0, background: 'white', border: '1px solid #e2e8f0', borderRadius: '8px', zIndex: 20, maxHeight: '250px', overflowY: 'auto', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)' }}>
+                            {nonFeaturedProducts.length === 0 ? (
+                                <div style={{ padding: '16px', fontSize: '13px', color: '#64748b', textAlign: 'center', fontWeight: '500' }}>
+                                    Eklenebilecek tüm eğitimler zaten vitrinde.
+                                </div>
+                            ) : (
+                                nonFeaturedProducts.map(p => (
+                                    <div 
+                                        key={p.id} 
+                                        onClick={() => {
+                                            toggleFeatured(p.id)
+                                            triggerToast('Eğitim başarıyla vitrine eklendi!')
+                                            setIsDropdownOpen(false)
+                                        }}
+                                        style={{ display: 'block', width: '100%', textAlign: 'left', padding: '12px 16px', fontSize: '13px', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', transition: 'background 0.2s', fontWeight: '600', color: '#1e293b' }}
+                                        onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
+                                        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                                    >
+                                        {p.name}
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
 

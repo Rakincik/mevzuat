@@ -4,17 +4,19 @@ import React, { useState } from 'react'
 import { 
     Edit3, Eye, FileText, CheckCircle, AlertCircle, 
     Copy, Check, Home as HomeIcon, BookOpen, Phone, 
-    HelpCircle, FileSignature, Search, Layers, ExternalLink 
+    HelpCircle, FileSignature, Search, Layers, ExternalLink,
+    Plus, Trash2
 } from 'lucide-react'
 import { useApp, EditablePage } from '@/context/AppContext'
 import styles from '../page.module.css'
 
 interface PagesTabProps {
     onEditPage: (page: EditablePage) => void
+    onCreateNewPage: () => void
 }
 
-export default function PagesTab({ onEditPage }: PagesTabProps) {
-    const { pages } = useApp()
+export default function PagesTab({ onEditPage, onCreateNewPage }: PagesTabProps) {
+    const { pages, deletePage, triggerConfirm } = useApp()
     const [searchQuery, setSearchQuery] = useState('')
     const [copiedId, setCopiedId] = useState<string | null>(null)
 
@@ -47,17 +49,20 @@ export default function PagesTab({ onEditPage }: PagesTabProps) {
     }
 
     const getLayoutLabel = (id: string) => {
+        if (id.startsWith('custom_')) {
+            return { label: 'Özel Dinamik Sayfa', style: { background: '#fdf4ff', color: '#c026d3', border: '1px solid #f5d0fe', fontSize: '11px', fontWeight: 'bold' as const, padding: '4px 10px', borderRadius: '20px' } }
+        }
         switch (id) {
             case 'home': 
-                return { label: '🏠 Ana Sayfa Sihirbazı', style: { background: '#e0e7ff', color: '#4338ca', border: '1px solid #c7d2fe', fontSize: '11px', fontWeight: 'bold' as const, padding: '4px 10px', borderRadius: '20px' } }
+                return { label: 'Ana Sayfa Sihirbazı', style: { background: '#e0e7ff', color: '#4338ca', border: '1px solid #c7d2fe', fontSize: '11px', fontWeight: 'bold' as const, padding: '4px 10px', borderRadius: '20px' } }
             case 'about': 
-                return { label: '📖 Standart Hakkımızda', style: { background: '#f5f3ff', color: '#6d28d9', border: '1px solid #ddd6fe', fontSize: '11px', fontWeight: 'bold' as const, padding: '4px 10px', borderRadius: '20px' } }
+                return { label: 'Standart Hakkımızda', style: { background: '#f5f3ff', color: '#6d28d9', border: '1px solid #ddd6fe', fontSize: '11px', fontWeight: 'bold' as const, padding: '4px 10px', borderRadius: '20px' } }
             case 'contact': 
-                return { label: '📞 İletişim Formu', style: { background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', fontSize: '11px', fontWeight: 'bold' as const, padding: '4px 10px', borderRadius: '20px' } }
+                return { label: 'İletişim Formu', style: { background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', fontSize: '11px', fontWeight: 'bold' as const, padding: '4px 10px', borderRadius: '20px' } }
             case 'faq': 
-                return { label: '❓ Soru-Cevap (SSS)', style: { background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', fontSize: '11px', fontWeight: 'bold' as const, padding: '4px 10px', borderRadius: '20px' } }
+                return { label: 'Soru-Cevap (SSS)', style: { background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', fontSize: '11px', fontWeight: 'bold' as const, padding: '4px 10px', borderRadius: '20px' } }
             default: 
-                return { label: '⚖️ Hukuki Sözleşme Şablonu', style: { background: '#fffbeb', color: '#b45309', border: '1px solid #fde68a', fontSize: '11px', fontWeight: 'bold' as const, padding: '4px 10px', borderRadius: '20px' } }
+                return { label: 'Hukuki / Standart Makale', style: { background: '#fffbeb', color: '#b45309', border: '1px solid #fde68a', fontSize: '11px', fontWeight: 'bold' as const, padding: '4px 10px', borderRadius: '20px' } }
         }
     }
 
@@ -67,6 +72,18 @@ export default function PagesTab({ onEditPage }: PagesTabProps) {
         navigator.clipboard.writeText(fullUrl)
         setCopiedId(id)
         setTimeout(() => setCopiedId(null), 2000)
+    }
+
+    const handleDeletePage = (page: EditablePage) => {
+        triggerConfirm({
+            title: 'Sayfayı Sil',
+            message: `"${page.title}" adlı özel sayfayı silmek istediğinize emin misiniz? Bu işlem geri alınamaz ve sayfaya giden linkler 404 hatası verir.`,
+            confirmText: 'Evet, Sayfayı Sil',
+            isDangerous: true,
+            onConfirm: () => {
+                deletePage(page.id)
+            }
+        })
     }
 
     return (
@@ -97,29 +114,40 @@ export default function PagesTab({ onEditPage }: PagesTabProps) {
 
             </div>
 
-            {/* 2. Premium Real-Time Search Bar */}
-            <div style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '14px 20px', display: 'flex', alignItems: 'center', gap: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)' }}>
-                <Search size={18} style={{ color: '#94a3b8' }} />
-                <input 
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Sayfa adı veya URL linki ile ara... (Örn: Hakkımızda, terms)"
-                    style={{ border: 'none', outline: 'none', background: 'transparent', width: '100%', fontSize: '14px', color: '#0f172a', fontWeight: '500' }}
-                />
-                {searchQuery && (
-                    <button 
-                        onClick={() => setSearchQuery('')}
-                        style={{ border: 'none', background: 'none', color: '#94a3b8', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', padding: '4px 8px', borderRadius: '6px' }}
-                    >
-                        Temizle
-                    </button>
-                )}
+            {/* 2. Premium Real-Time Search Bar & Add Button */}
+            <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                <div style={{ flex: 1, background: 'white', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '14px 20px', display: 'flex', alignItems: 'center', gap: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)' }}>
+                    <Search size={18} style={{ color: '#94a3b8' }} />
+                    <input 
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Sayfa adı veya URL linki ile ara... (Örn: Hakkımızda, terms)"
+                        style={{ border: 'none', outline: 'none', background: 'transparent', width: '100%', fontSize: '14px', color: '#0f172a', fontWeight: '500' }}
+                    />
+                    {searchQuery && (
+                        <button 
+                            onClick={() => setSearchQuery('')}
+                            style={{ border: 'none', background: 'none', color: '#94a3b8', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', padding: '4px 8px', borderRadius: '6px' }}
+                        >
+                            Temizle
+                        </button>
+                    )}
+                </div>
+                
+                <button 
+                    className={styles.btnAddProduct}
+                    onClick={onCreateNewPage}
+                    style={{ flexShrink: 0, padding: '14px 24px', borderRadius: '16px', background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)', color: 'white', border: 'none', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 15px -3px rgba(37, 99, 235, 0.4)' }}
+                >
+                    <Plus size={18} />
+                    <span>Yeni Özel Sayfa</span>
+                </button>
             </div>
 
             {/* 3. Redesigned Table Card */}
             <div className={styles.tableCard} style={{ borderRadius: '20px', border: '1px solid #e2e8f0', boxShadow: '0 10px 30px -15px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
-                <div className={styles.pageTableHeader} style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', padding: '16px 24px', fontSize: '11px', fontWeight: 'bold', color: '#64748b', letterSpacing: '0.05em', textTransform: 'uppercase', display: 'grid', gridTemplateColumns: '2.2fr 1.2fr 1fr 180px', alignItems: 'center' }}>
+                <div className={styles.pageTableHeader} style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', padding: '16px 24px', fontSize: '11px', fontWeight: 'bold', color: '#64748b', letterSpacing: '0.05em', textTransform: 'uppercase', display: 'grid', gridTemplateColumns: '2.2fr 1.2fr 1fr 220px', alignItems: 'center' }}>
                     <div>Sayfa Başlığı & URL</div>
                     <div>Şablon / Tasarım</div>
                     <div>Yayın Durumu</div>
@@ -140,7 +168,7 @@ export default function PagesTab({ onEditPage }: PagesTabProps) {
                                     className={styles.pageTableRow} 
                                     style={{ 
                                         display: 'grid', 
-                                        gridTemplateColumns: '2.2fr 1.2fr 1fr 180px', 
+                                        gridTemplateColumns: '2.2fr 1.2fr 1fr 220px', 
                                         alignItems: 'center', 
                                         padding: '20px 24px', 
                                         borderBottom: '1px solid #f1f5f9',
@@ -189,7 +217,7 @@ export default function PagesTab({ onEditPage }: PagesTabProps) {
                                     </div>
 
                                     {/* Column 4: Premium actions (Edit & Sitede Gör) */}
-                                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', alignItems: 'center' }}>
                                         <a 
                                             href={pageUrl} 
                                             target="_blank" 
@@ -219,6 +247,17 @@ export default function PagesTab({ onEditPage }: PagesTabProps) {
                                             <Edit3 size={12} />
                                             <span>Düzenle</span>
                                         </button>
+                                        
+                                        {page.id.startsWith('custom_') && (
+                                            <button 
+                                                onClick={() => handleDeletePage(page)}
+                                                className={styles.actionDeleteBtn}
+                                                style={{ padding: '7px 7px', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 'bold', background: '#fef2f2', color: '#ef4444', border: '1px solid #fecaca', marginLeft: '4px' }}
+                                                title="Bu özel sayfayı sil"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             )

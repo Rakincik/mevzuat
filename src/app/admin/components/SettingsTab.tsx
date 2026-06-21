@@ -184,6 +184,84 @@ export default function SettingsTab({ triggerToast }: SettingsTabProps) {
                     </button>
                 </form>
             </div>
+
+            {/* Card 3: Banka & EFT / Havale Bilgileri */}
+            <div className={styles.bentoCard}>
+                <h2 className={styles.cardTitle}>
+                    <Globe size={18} />
+                    <span>Banka Hesap (EFT / Havale) Bilgileri</span>
+                </h2>
+                <p className={styles.cardDesc}>Kredi kartı dışındaki ödemeler için öğrencilerin göreceği resmi banka IBAN bilgilerinizi yönetin.</p>
+                
+                <form onSubmit={handleSettingsSubmit} className={styles.adminForm}>
+                    <div className={styles.formGroup}>
+                        <label htmlFor="bankAccountHolder">Hesap Sahibi (Alıcı Unvanı) *</label>
+                        <input 
+                            id="bankAccountHolder"
+                            type="text" 
+                            value={settingsForm.bankAccountHolder || ''}
+                            onChange={(e) => setSettingsForm({ ...settingsForm, bankAccountHolder: e.target.value })}
+                            className={styles.formInput}
+                            placeholder="Örn: Mevzuat Adam Eğitim A.Ş."
+                        />
+                    </div>
+
+                    <div className={styles.formRow}>
+                        <div className={styles.formGroup}>
+                            <label htmlFor="bankName1">1. Banka Adı</label>
+                            <input 
+                                id="bankName1"
+                                type="text" 
+                                value={settingsForm.bankName1 || ''}
+                                onChange={(e) => setSettingsForm({ ...settingsForm, bankName1: e.target.value })}
+                                className={styles.formInput}
+                                placeholder="Örn: Ziraat Bankası"
+                            />
+                        </div>
+                        <div className={styles.formGroup}>
+                            <label htmlFor="bankIban1">1. Banka IBAN</label>
+                            <input 
+                                id="bankIban1"
+                                type="text" 
+                                value={settingsForm.bankIban1 || ''}
+                                onChange={(e) => setSettingsForm({ ...settingsForm, bankIban1: e.target.value })}
+                                className={styles.formInput}
+                                placeholder="TR00 0000..."
+                            />
+                        </div>
+                    </div>
+
+                    <div className={styles.formRow}>
+                        <div className={styles.formGroup}>
+                            <label htmlFor="bankName2">2. Banka Adı (Opsiyonel)</label>
+                            <input 
+                                id="bankName2"
+                                type="text" 
+                                value={settingsForm.bankName2 || ''}
+                                onChange={(e) => setSettingsForm({ ...settingsForm, bankName2: e.target.value })}
+                                className={styles.formInput}
+                                placeholder="Örn: Garanti BBVA"
+                            />
+                        </div>
+                        <div className={styles.formGroup}>
+                            <label htmlFor="bankIban2">2. Banka IBAN (Opsiyonel)</label>
+                            <input 
+                                id="bankIban2"
+                                type="text" 
+                                value={settingsForm.bankIban2 || ''}
+                                onChange={(e) => setSettingsForm({ ...settingsForm, bankIban2: e.target.value })}
+                                className={styles.formInput}
+                                placeholder="TR00 0000..."
+                            />
+                        </div>
+                    </div>
+
+                    <button type="submit" className={styles.btnSubmit}>
+                        <Save size={16} />
+                        <span>Banka Bilgilerini Kaydet</span>
+                    </button>
+                </form>
+            </div>
         </div>
     )
 }

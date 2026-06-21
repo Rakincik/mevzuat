@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import * as LucideIcons from 'lucide-react'
 import { useApp, EditablePage, FAQItem, PageSection } from '@/context/AppContext'
+import CustomSelect from '@/components/ui/CustomSelect'
 import styles from '../page.module.css'
 
 interface PageCMSModalProps {
@@ -582,39 +583,64 @@ export default function PageCMSModal({ isOpen, onClose, editingPage, triggerToas
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
         
+        const isCustomPage = editingPage.id.startsWith('custom_')
+        
+        // Base fields
         const pageData: any = {
-            title: pageForm.title.trim(),
-            seoTitle: pageForm.seoTitle.trim(),
-            seoDescription: pageForm.seoDescription.trim(),
+            title: pageForm.title?.trim() || '',
+            seoTitle: pageForm.seoTitle?.trim() || '',
+            seoDescription: pageForm.seoDescription?.trim() || '',
             status: pageForm.status,
-            createdAt: new Date().toISOString()
+            createdAt: editingPage.createdAt || new Date().toISOString()
         }
 
-        if (editingPage.id === 'home') {
+        if (isCustomPage) {
+            // Slugify the title if slug is empty
+            const slugify = (text: string) => {
+                return text.toString().toLowerCase()
+                    .replace(/\s+/g, '-')           
+                    .replace(/[^\w\-]+/g, '')       
+                    .replace(/\-\-+/g, '-')         
+                    .replace(/^-+/, '')             
+                    .replace(/-+$/, '');            
+            }
+            
+            pageData.slug = pageForm.slug?.trim() || slugify(pageForm.title?.trim() || '')
+            pageData.content = pageForm.content?.trim() || ''
+            
+            const isNewPage = !pages.some(p => p.id === editingPage.id)
+            if (isNewPage) {
+                // @ts-ignore
+                addPage({ ...editingPage, ...pageData })
+                triggerToast('Yeni özel sayfa başarıyla oluşturuldu!')
+                onClose()
+                return
+            }
+        } else if (editingPage.id === 'home') {
             pageData.showAnnouncement = pageForm.showAnnouncement
-            pageData.announcementText = pageForm.announcementText.trim()
-            pageData.announcementLink = pageForm.announcementLink.trim()
-            pageData.announcementBg = pageForm.announcementBg.trim()
+            pageData.announcementText = pageForm.announcementText?.trim() || ''
+            pageData.announcementLink = pageForm.announcementLink?.trim() || ''
+            pageData.announcementBg = pageForm.announcementBg?.trim() || ''
             pageData.announcementType = pageForm.announcementType
             pageData.announcementImage = pageForm.announcementImage
-            pageData.slides = pageForm.slides
+            pageData.slides = pageForm.slides?.map(s => ({ ...s, title: s.title?.trim() || '', subtitle: s.subtitle?.trim() || '' })) || []
             pageData.ctaPanels = pageForm.ctaPanels
             pageData.customSections = pageForm.customSections
         } else if (editingPage.id === 'about') {
-            pageData.aboutText = pageForm.aboutText.trim()
-            pageData.aboutVision = pageForm.aboutVision.trim()
-            pageData.aboutMission = pageForm.aboutMission.trim()
+            pageData.aboutText = pageForm.aboutText?.trim() || ''
+            pageData.aboutVision = pageForm.aboutVision?.trim() || ''
+            pageData.aboutMission = pageForm.aboutMission?.trim() || ''
             pageData.customSections = pageForm.customSections
         } else if (editingPage.id === 'contact') {
-            pageData.phone = pageForm.phone.trim()
-            pageData.email = pageForm.email.trim()
-            pageData.address = pageForm.address.trim()
-            pageData.whatsapp = pageForm.whatsapp.trim()
+            pageData.phone = pageForm.phone?.trim() || ''
+            pageData.email = pageForm.email?.trim() || ''
+            pageData.address = pageForm.address?.trim() || ''
+            pageData.whatsapp = pageForm.whatsapp?.trim() || ''
         } else if (editingPage.id === 'faq') {
             pageData.faqs = pageForm.faqs
         } else {
             // Legal agreements
-            pageData.content = pageForm.content.trim()
+            pageData.content = pageForm.content?.trim() || ''
         }
 
         updatePage(editingPage.id, pageData)
@@ -630,8 +656,9 @@ export default function PageCMSModal({ isOpen, onClose, editingPage, triggerToas
                 className={styles.modalContainer} 
                 style={{ 
                     maxWidth: isWidescreenMode 
-                        ? '1280px' 
-                        : (editingPage.id === 'faq' || ['terms', 'privacy', 'shipping', 'returns'].includes(editingPage.id) ? '800px' : '650px') 
+                        ? '1440px' 
+                        : (editingPage.id === 'faq' || ['terms', 'privacy', 'shipping', 'returns'].includes(editingPage.id) ? '900px' : '750px'),
+                    width: '95vw'
                 }}
             >
                 <div className={styles.modalHeader}>
@@ -651,62 +678,13 @@ export default function PageCMSModal({ isOpen, onClose, editingPage, triggerToas
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 60px)', overflow: 'hidden' }}>
-                    <div className={styles.widescreenSplitBody || ''} style={{ display: 'grid', gridTemplateColumns: isWidescreenMode ? '1.2fr 0.8fr' : '1fr', overflow: 'hidden', flexGrow: 1 }}>
+                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', flexGrow: 1, minHeight: 0, overflow: 'hidden' }}>
+                    <div className={styles.widescreenSplitBody || ''} style={{ display: 'flex', flexDirection: 'row', overflow: 'hidden', flexGrow: 1, minHeight: 0 }}>
                         
                         {/* LEFT COLUMN: EDITING FORM CONTROLS */}
-                        <div className={styles.modalBody} style={{ padding: '20px', overflowY: 'auto', borderRight: isWidescreenMode ? '1px solid #e2e8f0' : 'none' }}>
+                        <div className={styles.modalBody} style={{ flex: isWidescreenMode ? '1.2' : '1', width: isWidescreenMode ? '60%' : '100%', padding: '20px', overflowY: 'auto', borderRight: isWidescreenMode ? '1px solid #e2e8f0' : 'none', minHeight: 0 }}>
                             
-                            {/* Modal Tabs Bar */}
-                            <div className={styles.modalSubTabs}>
-                                <button 
-                                    type="button" 
-                                    className={`${styles.modalSubTabBtn} ${activeModalTab === 'content' ? styles.modalSubTabActive : ''}`}
-                                    onClick={() => setActiveModalTab('content')}
-                                >
-                                    <span>⚙ Sayfa İçeriği</span>
-                                </button>
-                                <button 
-                                    type="button" 
-                                    className={`${styles.modalSubTabBtn} ${activeModalTab === 'seo' ? styles.modalSubTabActive : ''}`}
-                                    onClick={() => setActiveModalTab('seo')}
-                                >
-                                    <span>🔍 Arama Motoru (SEO)</span>
-                                </button>
-                            </div>
-
-                            {activeModalTab === 'seo' ? (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                                    <h3 style={{ fontSize: '13px', fontWeight: 'bold', color: '#1e293b', textTransform: 'uppercase' }}>SEO Meta Bilgileri</h3>
-                                    <p style={{ fontSize: '12px', color: '#64748b', marginTop: '-8px' }}>Google, Bing ve diğer arama motorlarının sitenizi dizine eklerken göstereceği başlık ve açıklamalar.</p>
-                                    
-                                    <div className={styles.formGroup}>
-                                        <label htmlFor="seo-title">Arama Motoru Başlığı (Title) *</label>
-                                        <input 
-                                            id="seo-title"
-                                            type="text" 
-                                            value={pageForm.seoTitle || ''}
-                                            onChange={(e) => setPageForm({ ...pageForm, seoTitle: e.target.value })}
-                                            className={styles.formInput}
-                                            placeholder="Örn: Hakkımızda | MEVZUAT ADAM - GYS"
-                                            required
-                                        />
-                                    </div>
-
-                                    <div className={styles.formGroup}>
-                                        <label htmlFor="seo-desc">Arama Motoru Açıklaması (Meta Description) *</label>
-                                        <textarea 
-                                            id="seo-desc"
-                                            value={pageForm.seoDescription || ''}
-                                            onChange={(e) => setPageForm({ ...pageForm, seoDescription: e.target.value })}
-                                            className={styles.formTextarea}
-                                            placeholder="Arama motoru sonuç sayfalarında çıkacak 150-160 karakterlik özet..."
-                                            required
-                                        />
-                                    </div>
-                                </div>
-                            ) : (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                                     
                                     {/* Tab Content: Home tab controls */}
                                     {editingPage.id === 'home' && (
@@ -725,15 +703,15 @@ export default function PageCMSModal({ isOpen, onClose, editingPage, triggerToas
                                                 </div>
                                                 <div className={styles.formGroup}>
                                                     <label htmlFor="page-status">Yayın Durumu *</label>
-                                                    <select
+                                                    <CustomSelect
                                                         id="page-status"
                                                         value={pageForm.status}
-                                                        onChange={(e) => setPageForm({ ...pageForm, status: e.target.value as 'published' | 'draft' })}
-                                                        className={styles.formSelect}
-                                                    >
-                                                        <option value="published">Yayında (Menü & Footer'da Gösterilir)</option>
-                                                        <option value="draft">Taslak (Ziyaretçilere Gizlenir)</option>
-                                                    </select>
+                                                        onChange={(val) => setPageForm({ ...pageForm, status: val as 'published' | 'draft' })}
+                                                        options={[
+                                                            { value: 'published', label: "Yayında (Menü & Footer'da Gösterilir)" },
+                                                            { value: 'draft', label: 'Taslak (Ziyaretçilere Gizlenir)' }
+                                                        ]}
+                                                    />
                                                 </div>
                                             </div>
 
@@ -782,25 +760,25 @@ export default function PageCMSModal({ isOpen, onClose, editingPage, triggerToas
                                                     <div className={styles.formRow}>
                                                         <div className={styles.formGroup}>
                                                             <label>Duyuru Bandı Durumu</label>
-                                                            <select
+                                                            <CustomSelect
                                                                 value={pageForm.showAnnouncement ? 'yes' : 'no'}
-                                                                onChange={(e) => setPageForm({ ...pageForm, showAnnouncement: e.target.value === 'yes' })}
-                                                                className={styles.formSelect}
-                                                            >
-                                                                <option value="yes">Aktif (Yayında Göster)</option>
-                                                                <option value="no">Pasif (Gizle)</option>
-                                                            </select>
+                                                                onChange={(val) => setPageForm({ ...pageForm, showAnnouncement: val === 'yes' })}
+                                                                options={[
+                                                                    { value: 'yes', label: 'Aktif (Yayında Göster)' },
+                                                                    { value: 'no', label: 'Pasif (Gizle)' }
+                                                                ]}
+                                                            />
                                                         </div>
                                                         <div className={styles.formGroup}>
                                                             <label>Duyuru Türü / Tasarımı</label>
-                                                            <select
+                                                            <CustomSelect
                                                                 value={pageForm.announcementType || 'text'}
-                                                                onChange={(e) => setPageForm({ ...pageForm, announcementType: e.target.value as 'text' | 'image' })}
-                                                                className={styles.formSelect}
-                                                            >
-                                                                <option value="text">✍️ Metin ve Renk/Gradyan</option>
-                                                                <option value="image">🖼️ Özel Görsel Banner Yükle</option>
-                                                            </select>
+                                                                onChange={(val) => setPageForm({ ...pageForm, announcementType: val as 'text' | 'image' })}
+                                                                options={[
+                                                                    { value: 'text', label: '✍️ Metin ve Renk/Gradyan' },
+                                                                    { value: 'image', label: '🖼️ Özel Görsel Banner Yükle' }
+                                                                ]}
+                                                            />
                                                         </div>
                                                     </div>
 
@@ -946,7 +924,7 @@ export default function PageCMSModal({ isOpen, onClose, editingPage, triggerToas
                                                             <div key={slide.id || idx} className={styles.faqItemRow} style={{ border: '1px solid #cbd5e1', background: '#f8fafc', padding: '16px' }}>
                                                                 <div className={styles.faqItemHeader}>
                                                                     <span className={styles.faqItemTitle} style={{ color: '#2563eb', fontWeight: '800' }}>
-                                                                        Slayt #{idx + 1}: {slide.title || 'Başlıksız Slayt'}
+                                                                        Slayt #{idx + 1}: {slide.title ? slide.title.replace(/<[^>]*>?/gm, '') : 'Başlıksız Slayt'}
                                                                     </span>
                                                                     
                                                                     <div style={{ display: 'flex', gap: '4px' }}>
@@ -979,10 +957,10 @@ export default function PageCMSModal({ isOpen, onClose, editingPage, triggerToas
                                                                 </div>
                                                                 
                                                                 <div className={styles.adminForm} style={{ marginTop: '12px', border: 'none', padding: 0 }}>
-                                                                    <div className={styles.formRow}>
+                                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                                                                         <RichTextEditor 
                                                                             id={`slide-title-${idx}`}
-                                                                            label="Slayt Başlığı"
+                                                                            label="Slayt Başlığı *"
                                                                             required
                                                                             value={slide.title || ''}
                                                                             onChange={(val) => handleSlideChange(idx, 'title', val)}
@@ -1075,35 +1053,25 @@ export default function PageCMSModal({ isOpen, onClose, editingPage, triggerToas
                                                                             return (
                                                                                 <div className={styles.formGroup}>
                                                                                     <label>Buton Yönlendirme Linki (İsteğe Bağlı)</label>
-                                                                                    <select
+                                                                                    <CustomSelect
                                                                                         value={selectValue}
-                                                                                        onChange={(e) => {
-                                                                                            const val = e.target.value
+                                                                                        onChange={(val) => {
                                                                                             if (val === 'custom') {
                                                                                                 handleSlideChange(idx, 'link', '')
                                                                                             } else {
                                                                                                 handleSlideChange(idx, 'link', val)
                                                                                             }
                                                                                         }}
-                                                                                        className={styles.formSelect}
                                                                                         style={{ marginBottom: selectValue === 'custom' ? '8px' : 0 }}
-                                                                                    >
-                                                                                        <option value="">-- Bağlantı Seçin --</option>
-                                                                                        <optgroup label="Sistem Sayfaları">
-                                                                                            {defaultPresets.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
-                                                                                        </optgroup>
-                                                                                        {kurumPresets.length > 0 && (
-                                                                                            <optgroup label="Kurum/Bakanlık Sınavları">
-                                                                                                {kurumPresets.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
-                                                                                            </optgroup>
-                                                                                        )}
-                                                                                        {pagePresets.length > 0 && (
-                                                                                            <optgroup label="Yasal Sözleşmeler & Politikalar">
-                                                                                                {pagePresets.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
-                                                                                            </optgroup>
-                                                                                        )}
-                                                                                        <option value="custom">✍️ Özel Bağlantı (Manuel Yazacağım)</option>
-                                                                                    </select>
+                                                                                        options={[
+                                                                                            { value: '', label: '-- Bağlantı Seçin --' },
+                                                                                            { value: 'hdr1', label: 'Sistem Sayfaları', disabled: true },
+                                                                                            ...defaultPresets,
+                                                                                            ...(kurumPresets.length > 0 ? [{ value: 'hdr2', label: 'Kurum/Bakanlık Sınavları', disabled: true }, ...kurumPresets] : []),
+                                                                                            ...(pagePresets.length > 0 ? [{ value: 'hdr3', label: 'Yasal Sözleşmeler & Politikalar', disabled: true }, ...pagePresets] : []),
+                                                                                            { value: 'custom', label: '✍️ Özel Bağlantı (Manuel Yazacağım)' }
+                                                                                        ]}
+                                                                                    />
                                                                                     {selectValue === 'custom' && (
                                                                                         <input 
                                                                                             type="text"
@@ -1283,16 +1251,16 @@ export default function PageCMSModal({ isOpen, onClose, editingPage, triggerToas
 
                                                                 <div className={styles.formGroup}>
                                                                     <label>Arka Plan Gradyan Rengi</label>
-                                                                    <select
+                                                                    <CustomSelect
                                                                         value={panel.bgGradient || 'blue'}
-                                                                        onChange={(e) => handleCtaCardChange(pIdx, 'bgGradient', e.target.value)}
-                                                                        className={styles.formSelect}
-                                                                    >
-                                                                        <option value="blue">Deep Blue (Mavi Gradyan)</option>
-                                                                        <option value="purple">Royal Purple (Mor/Eflatun)</option>
-                                                                        <option value="emerald">Forest Emerald (Zümrüt Yeşil)</option>
-                                                                        <option value="orange">Sunset Orange (Turuncu/Kızıl)</option>
-                                                                    </select>
+                                                                        onChange={(val) => handleCtaCardChange(pIdx, 'bgGradient', val)}
+                                                                        options={[
+                                                                            { value: 'blue', label: 'Deep Blue (Mavi Gradyan)' },
+                                                                            { value: 'purple', label: 'Royal Purple (Mor/Eflatun)' },
+                                                                            { value: 'emerald', label: 'Forest Emerald (Zümrüt Yeşil)' },
+                                                                            { value: 'orange', label: 'Sunset Orange (Turuncu/Kızıl)' }
+                                                                        ]}
+                                                                    />
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -1357,16 +1325,16 @@ export default function PageCMSModal({ isOpen, onClose, editingPage, triggerToas
                                                                         </div>
                                                                         <div className={styles.formGroup}>
                                                                             <label>Blok Düzeni / Layout *</label>
-                                                                            <select
+                                                                            <CustomSelect
                                                                                 value={section.layout || 'card'}
-                                                                                onChange={(e) => handleCustomSectionChange(sIdx, 'layout', e.target.value)}
-                                                                                className={styles.formSelect}
-                                                                            >
-                                                                                <option value="card">Grid Kart Düzeni (3'lü Yan Yana)</option>
-                                                                                <option value="split-left">İki Sütun: Solda Görsel, Sağda Tanıtım</option>
-                                                                                <option value="split-right">İki Sütun: Solda Tanıtım, Sağda Görsel</option>
-                                                                                <option value="full-width">Geniş Duyuru Bandı (Resim / Renk Arka Planlı)</option>
-                                                                            </select>
+                                                                                onChange={(val) => handleCustomSectionChange(sIdx, 'layout', val)}
+                                                                                options={[
+                                                                                    { value: 'card', label: "Grid Kart Düzeni (3'lü Yan Yana)" },
+                                                                                    { value: 'split-left', label: 'İki Sütun: Solda Görsel, Sağda Tanıtım' },
+                                                                                    { value: 'split-right', label: 'İki Sütun: Solda Tanıtım, Sağda Görsel' },
+                                                                                    { value: 'full-width', label: 'Geniş Duyuru Bandı (Resim / Renk Arka Planlı)' }
+                                                                                ]}
+                                                                            />
                                                                         </div>
                                                                     </div>
 
@@ -1530,15 +1498,15 @@ export default function PageCMSModal({ isOpen, onClose, editingPage, triggerToas
                                                 </div>
                                                 <div className={styles.formGroup}>
                                                     <label htmlFor="page-status">Yayın Durumu *</label>
-                                                    <select
+                                                    <CustomSelect
                                                         id="page-status"
                                                         value={pageForm.status}
-                                                        onChange={(e) => setPageForm({ ...pageForm, status: e.target.value as 'published' | 'draft' })}
-                                                        className={styles.formSelect}
-                                                    >
-                                                        <option value="published">Yayında (Menü & Footer'da Gösterilir)</option>
-                                                        <option value="draft">Taslak (Ziyaretçilere Gizlenir)</option>
-                                                    </select>
+                                                        onChange={(val) => setPageForm({ ...pageForm, status: val as 'published' | 'draft' })}
+                                                        options={[
+                                                            { value: 'published', label: "Yayında (Menü & Footer'da Gösterilir)" },
+                                                            { value: 'draft', label: 'Taslak (Ziyaretçilere Gizlenir)' }
+                                                        ]}
+                                                    />
                                                 </div>
                                             </div>
 
@@ -1633,16 +1601,16 @@ export default function PageCMSModal({ isOpen, onClose, editingPage, triggerToas
                                                                     </div>
                                                                     <div className={styles.formGroup}>
                                                                         <label>Blok Düzeni / Layout *</label>
-                                                                        <select
+                                                                        <CustomSelect
                                                                             value={section.layout || 'split-left'}
-                                                                            onChange={(e) => handleCustomSectionChange(sIdx, 'layout', e.target.value)}
-                                                                            className={styles.formSelect}
-                                                                        >
-                                                                            <option value="split-left">İki Sütun: Solda Görsel, Sağda Tanıtım</option>
-                                                                            <option value="split-right">İki Sütun: Solda Tanıtım, Sağda Görsel</option>
-                                                                            <option value="card">Grid Kart Düzeni (3'lü Yan Yana)</option>
-                                                                            <option value="full-width">Geniş Duyuru Bandı (Resim / Renk Arka Planlı)</option>
-                                                                        </select>
+                                                                            onChange={(val) => handleCustomSectionChange(sIdx, 'layout', val)}
+                                                                            options={[
+                                                                                { value: 'split-left', label: 'İki Sütun: Solda Görsel, Sağda Tanıtım' },
+                                                                                { value: 'split-right', label: 'İki Sütun: Solda Tanıtım, Sağda Görsel' },
+                                                                                { value: 'card', label: "Grid Kart Düzeni (3'lü Yan Yana)" },
+                                                                                { value: 'full-width', label: 'Geniş Duyuru Bandı (Resim / Renk Arka Planlı)' }
+                                                                            ]}
+                                                                        />
                                                                     </div>
                                                                 </div>
 
@@ -1803,15 +1771,15 @@ export default function PageCMSModal({ isOpen, onClose, editingPage, triggerToas
                                                 </div>
                                                 <div className={styles.formGroup}>
                                                     <label htmlFor="page-status">Yayın Durumu *</label>
-                                                    <select
+                                                    <CustomSelect
                                                         id="page-status"
                                                         value={pageForm.status}
-                                                        onChange={(e) => setPageForm({ ...pageForm, status: e.target.value as 'published' | 'draft' })}
-                                                        className={styles.formSelect}
-                                                    >
-                                                        <option value="published">Yayında (Menü & Footer'da Gösterilir)</option>
-                                                        <option value="draft">Taslak (Ziyaretçilere Gizlenir)</option>
-                                                    </select>
+                                                        onChange={(val) => setPageForm({ ...pageForm, status: val as 'published' | 'draft' })}
+                                                        options={[
+                                                            { value: 'published', label: "Yayında (Menü & Footer'da Gösterilir)" },
+                                                            { value: 'draft', label: 'Taslak (Ziyaretçilere Gizlenir)' }
+                                                        ]}
+                                                    />
                                                 </div>
                                             </div>
 
@@ -1882,15 +1850,15 @@ export default function PageCMSModal({ isOpen, onClose, editingPage, triggerToas
                                                 </div>
                                                 <div className={styles.formGroup}>
                                                     <label htmlFor="page-status">Yayın Durumu *</label>
-                                                    <select
+                                                    <CustomSelect
                                                         id="page-status"
                                                         value={pageForm.status}
-                                                        onChange={(e) => setPageForm({ ...pageForm, status: e.target.value as 'published' | 'draft' })}
-                                                        className={styles.formSelect}
-                                                    >
-                                                        <option value="published">Yayında (Menü & Footer'da Gösterilir)</option>
-                                                        <option value="draft">Taslak (Ziyaretçilere Gizlenir)</option>
-                                                    </select>
+                                                        onChange={(val) => setPageForm({ ...pageForm, status: val as 'published' | 'draft' })}
+                                                        options={[
+                                                            { value: 'published', label: "Yayında (Menü & Footer'da Gösterilir)" },
+                                                            { value: 'draft', label: 'Taslak (Ziyaretçilere Gizlenir)' }
+                                                        ]}
+                                                    />
                                                 </div>
                                             </div>
 
@@ -1956,7 +1924,7 @@ export default function PageCMSModal({ isOpen, onClose, editingPage, triggerToas
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                                             <div className={styles.formRow}>
                                                 <div className={styles.formGroup}>
-                                                    <label htmlFor="page-title">Yasal Sayfa Başlığı *</label>
+                                                    <label htmlFor="page-title">{editingPage.id.startsWith('custom_') ? 'Özel Sayfa Başlığı *' : 'Yasal Sayfa Başlığı *'}</label>
                                                     <input 
                                                         id="page-title"
                                                         type="text"
@@ -1966,17 +1934,30 @@ export default function PageCMSModal({ isOpen, onClose, editingPage, triggerToas
                                                         className={styles.formInput}
                                                     />
                                                 </div>
+                                                {editingPage.id.startsWith('custom_') && (
+                                                    <div className={styles.formGroup}>
+                                                        <label htmlFor="page-slug">Sayfa Linki (URL Slug) (Boş bırakırsanız başlıktan türetilir)</label>
+                                                        <input 
+                                                            id="page-slug"
+                                                            type="text"
+                                                            value={pageForm.slug || ''}
+                                                            onChange={(e) => setPageForm({ ...pageForm, slug: e.target.value.toLowerCase().replace(/\s+/g, '-') })}
+                                                            className={styles.formInput}
+                                                            placeholder="Örn: kara-cuma-kampanyasi"
+                                                        />
+                                                    </div>
+                                                )}
                                                 <div className={styles.formGroup}>
                                                     <label htmlFor="page-status">Yayın Durumu *</label>
-                                                    <select
+                                                    <CustomSelect
                                                         id="page-status"
                                                         value={pageForm.status}
-                                                        onChange={(e) => setPageForm({ ...pageForm, status: e.target.value as 'published' | 'draft' })}
-                                                        className={styles.formSelect}
-                                                    >
-                                                        <option value="published">Yayında (Menü & Footer'da Gösterilir)</option>
-                                                        <option value="draft">Taslak (Ziyaretçilere Gizlenir)</option>
-                                                    </select>
+                                                        onChange={(val) => setPageForm({ ...pageForm, status: val as 'published' | 'draft' })}
+                                                        options={[
+                                                            { value: 'published', label: "Yayında (Menü & Footer'da Gösterilir)" },
+                                                            { value: 'draft', label: 'Taslak (Ziyaretçilere Gizlenir)' }
+                                                        ]}
+                                                    />
                                                 </div>
                                             </div>
 
@@ -2036,15 +2017,24 @@ export default function PageCMSModal({ isOpen, onClose, editingPage, triggerToas
                                         </div>
                                     )}
                                 </div>
-                            )}
                         </div>
 
                         {/* RIGHT COLUMN: PREMIUM DEVICE LIVE PREVIEW EMULATOR */}
                         {isWidescreenMode && (
-                            <div className={styles.previewPane} style={{ background: '#f8fafc', padding: '20px', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
-                                    <h3 style={{ fontSize: '13px', fontWeight: 'bold', color: '#1e293b', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                        <Sparkles size={14} color="#eab308" />
+                            <div className={styles.previewPane} style={{ 
+                                flex: '0.8',
+                                width: '40%',
+                                background: '#0f172a', 
+                                backgroundImage: 'radial-gradient(#334155 1px, transparent 1px)',
+                                backgroundSize: '20px 20px',
+                                padding: '24px', 
+                                display: 'flex', 
+                                flexDirection: 'column', 
+                                height: '100%', 
+                                overflow: 'hidden' 
+                            }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
+                                    <h3 style={{ fontSize: '13px', fontWeight: 'bold', color: '#f8fafc', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                         <span>Canlı Web Tarayıcı Önizlemesi</span>
                                     </h3>
                                     
