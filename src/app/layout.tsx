@@ -15,6 +15,14 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "MEVZUAT ADAM - Görevde Yükselme ve Mevzuat Platformu",
   description: "Kurumsal eğitim çözümleri ve sınav hazırlık platformu",
+  icons: {
+    icon: [
+      { url: "/favicon.png" },
+      { url: "/favicon.ico" },
+    ],
+    shortcut: "/favicon.png",
+    apple: "/favicon.png",
+  },
 };
 
 export default function RootLayout({
