@@ -6,11 +6,12 @@ import Image from 'next/image'
 import { Search, X, ChevronRight } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useUIStore } from '@/stores/uiStore'
-import { allProducts } from '@/data/products'
+import { useApp } from '@/context/AppContext'
 import styles from './SearchModal.module.css'
 
 export default function SearchModal() {
     const { isSearchOpen, closeSearch } = useUIStore()
+    const { products } = useApp()
     const [query, setQuery] = useState('')
     const inputRef = useRef<HTMLInputElement>(null)
 
@@ -25,7 +26,6 @@ export default function SearchModal() {
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.key === 'Escape') closeSearch()
-            // Optional: Ctrl+K to open (handled in layout or here if mounted)
         }
         window.addEventListener('keydown', handleKeyDown)
         return () => window.removeEventListener('keydown', handleKeyDown)
@@ -34,9 +34,10 @@ export default function SearchModal() {
     // Filter products
     const filteredProducts = query.trim() === ''
         ? []
-        : allProducts.filter(product =>
-            product.name.toLowerCase().includes(query.toLowerCase()) ||
-            product.categoryName.toLowerCase().includes(query.toLowerCase())
+        : products.filter(product =>
+            product.status !== 'passive' &&
+            (product.name.toLowerCase().includes(query.toLowerCase()) ||
+            product.categoryName.toLowerCase().includes(query.toLowerCase()))
         ).slice(0, 5) // Limit to 5 results
 
     if (!isSearchOpen) return null

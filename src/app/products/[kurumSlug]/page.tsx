@@ -11,7 +11,7 @@ import styles from './page.module.css'
 
 export default function KurumDetailPage() {
     const { kurumSlug } = useParams<{ kurumSlug: string }>()
-    const { products, kurumlar } = useApp()
+    const { products, kurumlar, altKategoriler: globalAltKategoriler } = useApp()
     
     const kurum = kurumlar.find(k => k.slug === kurumSlug)
 
@@ -20,7 +20,7 @@ export default function KurumDetailPage() {
     }
 
     // Get Level 2 AltKategoriler for this ministry from dynamic products list
-    const ministryProducts = products.filter(p => p.kurumSlug === kurumSlug || (p.kurumSlugs && p.kurumSlugs.includes(kurumSlug)))
+    const ministryProducts = products.filter(p => p.status !== 'passive' && (p.kurumSlug === kurumSlug || (p.kurumSlugs && p.kurumSlugs.includes(kurumSlug))))
     const map = new Map<string, { name: string; count: number }>()
 
     ministryProducts.forEach(p => {
@@ -48,23 +48,36 @@ export default function KurumDetailPage() {
 
     const altKategoriler: any[] = []
     map.forEach((value, slug) => {
-        let description = `${value.name} sınavlarına yönelik güncel hazırlık setleri ve dersler.`
-        if (slug === 'yazi-isleri-mudurlugu') description = 'Yazı İşleri Müdürlüğü kadroları için kapsamlı konu anlatımları ve deneme sınavları.'
-        if (slug === 'zabit-katipligi') description = 'Zabıt Kâtipliği sınavlarına özel hazırlık paketleri ve pratik dersler.'
-        if (slug === 'icra-mudurlugu') description = 'İcra Müdürlüğü sınavı İcra-İflas Hukuku ve ilgili kanun dersleri.'
-        if (slug === 'seflik-sinavi') description = 'Şef kadroları Görevde Yükselme Sınavı (GYS) müfredat dersleri.'
-        if (slug === 'sube-mudurlugu') description = 'Şube Müdürü kadroları için A segmenti mevzuat konu anlatımları.'
-        if (slug === 'nufus-goc-mevzuati') description = 'Nüfus Hizmetleri ve Göç İdaresi Kanunu ders modülleri.'
-        if (slug === 'ortak-kanunlar') description = 'Tüm kurumlarda geçerli ortak kanunlar: Anayasa, 657 ve İdare Hukuku.'
-        if (slug === 'tam-paketler') description = 'Tüm ortak mevzuat konularını kapsayan avantajlı kombine paketler.'
+        const globalCat = globalAltKategoriler.find(c => c.slug === slug)
+        
+        let description = globalCat?.description || `${value.name} sınavlarına yönelik güncel hazırlık setleri ve dersler.`
+        if (!globalCat?.description) {
+            if (slug === 'yazi-isleri-mudurlugu') description = 'Yazı İşleri Müdürlüğü kadroları için kapsamlı konu anlatımları ve deneme sınavları.'
+            if (slug === 'zabit-katipligi') description = 'Zabıt Kâtipliği sınavlarına özel hazırlık paketleri ve pratik dersler.'
+            if (slug === 'icra-mudurlugu') description = 'İcra Müdürlüğü sınavı İcra-İflas Hukuku ve ilgili kanun dersleri.'
+            if (slug === 'seflik-sinavi') description = 'Şef kadroları Görevde Yükselme Sınavı (GYS) müfredat dersleri.'
+            if (slug === 'sube-mudurlugu') description = 'Şube Müdürü kadroları için A segmenti mevzuat konu anlatımları.'
+            if (slug === 'nufus-goc-mevzuati') description = 'Nüfus Hizmetleri ve Göç İdaresi Kanunu ders modülleri.'
+            if (slug === 'ortak-kanunlar') description = 'Tüm kurumlarda geçerli ortak kanunlar: Anayasa, 657 ve İdare Hukuku.'
+            if (slug === 'tam-paketler') description = 'Tüm ortak mevzuat konularını kapsayan avantajlı kombine paketler.'
+        }
 
-        altKategoriler.push({
-            name: value.name,
-            slug,
-            description,
-            productCount: value.count
-        })
+        const order = globalCat?.order !== undefined ? globalCat.order : 999
+        const status = globalCat?.status || 'active'
+
+        if (status === 'active') {
+            altKategoriler.push({
+                name: value.name,
+                slug,
+                description,
+                productCount: value.count,
+                order
+            })
+        }
     })
+
+    // Sort subcategories by order!
+    altKategoriler.sort((a, b) => a.order - b.order)
 
 
     return (

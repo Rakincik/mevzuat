@@ -1,3 +1,5 @@
+'use client'
+
 import React, { useState, useEffect } from 'react'
 import { X, Save, User as UserIcon, BookOpen } from 'lucide-react'
 import { useApp, Student } from '@/context/AppContext'
@@ -18,6 +20,7 @@ export default function UserModal({ isOpen, onClose, editingStudent, triggerToas
     const [phone, setPhone] = useState('')
     const [status, setStatus] = useState<'active' | 'suspended'>('active')
     const [enrolledCourses, setEnrolledCourses] = useState<string[]>([])
+    const [courseSearch, setCourseSearch] = useState('')
 
     useEffect(() => {
         if (isOpen) {
@@ -34,6 +37,7 @@ export default function UserModal({ isOpen, onClose, editingStudent, triggerToas
                 setStatus('active')
                 setEnrolledCourses([])
             }
+            setCourseSearch('')
         }
     }, [isOpen, editingStudent])
 
@@ -79,57 +83,94 @@ export default function UserModal({ isOpen, onClose, editingStudent, triggerToas
         )
     }
 
+    const handleSelectAllCourses = () => {
+        const allIds = products.map(p => p.id)
+        setEnrolledCourses(allIds)
+    }
+
+    const handleClearCourses = () => {
+        setEnrolledCourses([])
+    }
+
+    const filteredProducts = products.filter(product => {
+        const matchesSearch = product.name.toLowerCase().includes(courseSearch.toLowerCase()) || 
+            (kurumlar.find(k => k.slug === product.kurumSlug)?.name || '').toLowerCase().includes(courseSearch.toLowerCase())
+        return matchesSearch
+    })
+
     return (
         <div className={styles.modalOverlay} onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
-            <div className={styles.modalContent} style={{ maxWidth: '700px' }}>
+            <div className={styles.modalContainer} style={{ maxWidth: '750px' }}>
                 <div className={styles.modalHeader}>
                     <h2>{editingStudent ? 'Öğrenciyi Düzenle' : 'Yeni Öğrenci Ekle'}</h2>
-                    <button onClick={onClose} className={styles.closeBtn}><X size={20} /></button>
+                    <button onClick={onClose} className={styles.modalCloseBtn}><X size={18} /></button>
                 </div>
 
-                <form onSubmit={handleSubmit} className={styles.modalBody}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                <form onSubmit={handleSubmit}>
+                    <div className={styles.modalBody} style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: '28px', padding: '24px 28px' }}>
                         {/* Sol Kolon: Profil Bilgileri */}
-                        <div>
-                            <h3 style={{ fontSize: '14px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', color: '#334155' }}>
-                                <UserIcon size={16} /> Profil Bilgileri
+                        <div className={styles.adminForm} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            {/* Live Initials Card */}
+                            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '8px', background: '#f8fafc', padding: '12px', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
+                                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#0f172a', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', fontSize: '14px' }}>
+                                    {name ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '?'}
+                                </div>
+                                <div style={{ minWidth: 0, flex: 1 }}>
+                                    <h4 style={{ fontSize: '13px', fontWeight: '800', color: '#0f172a', margin: '0', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name || 'Yeni Öğrenci'}</h4>
+                                    <span style={{ fontSize: '11px', color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>{email || 'E-posta adresi girilmedi'}</span>
+                                </div>
+                            </div>
+
+                            <h3 style={{ fontSize: '13px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px', color: '#334155', margin: '0 0 4px 0' }}>
+                                <UserIcon size={15} /> Profil Bilgileri
                             </h3>
                             
                             <div className={styles.formGroup}>
-                                <label>Öğrenci Adı Soyadı</label>
+                                <label style={{ fontSize: '11px', fontWeight: '700', color: '#475569' }}>Öğrenci Adı Soyadı *</label>
                                 <input 
                                     type="text" 
                                     value={name} 
                                     onChange={e => setName(e.target.value)} 
                                     placeholder="Örn: Ahmet Yılmaz"
+                                    className={styles.formInput}
+                                    style={{ padding: '10px 14px', fontSize: '13px' }}
                                     required 
                                 />
                             </div>
 
                             <div className={styles.formGroup}>
-                                <label>E-posta Adresi</label>
+                                <label style={{ fontSize: '11px', fontWeight: '700', color: '#475569' }}>E-posta Adresi *</label>
                                 <input 
                                     type="email" 
                                     value={email} 
                                     onChange={e => setEmail(e.target.value)} 
                                     placeholder="Örn: ahmet@example.com"
+                                    className={styles.formInput}
+                                    style={{ padding: '10px 14px', fontSize: '13px' }}
                                     required 
                                 />
                             </div>
 
                             <div className={styles.formGroup}>
-                                <label>Telefon Numarası</label>
+                                <label style={{ fontSize: '11px', fontWeight: '700', color: '#475569' }}>Telefon Numarası</label>
                                 <input 
                                     type="text" 
                                     value={phone} 
                                     onChange={e => setPhone(e.target.value)} 
                                     placeholder="Örn: 0555 123 45 67"
+                                    className={styles.formInput}
+                                    style={{ padding: '10px 14px', fontSize: '13px' }}
                                 />
                             </div>
 
                             <div className={styles.formGroup}>
-                                <label>Hesap Durumu</label>
-                                <select value={status} onChange={(e) => setStatus(e.target.value as 'active' | 'suspended')}>
+                                <label style={{ fontSize: '11px', fontWeight: '700', color: '#475569' }}>Hesap Durumu</label>
+                                <select 
+                                    value={status} 
+                                    onChange={(e) => setStatus(e.target.value as 'active' | 'suspended')}
+                                    className={styles.formSelect}
+                                    style={{ padding: '10px 14px', fontSize: '13px' }}
+                                >
                                     <option value="active">Aktif (Giriş Yapabilir)</option>
                                     <option value="suspended">Askıya Alındı (Giriş Yapamaz)</option>
                                 </select>
@@ -137,61 +178,98 @@ export default function UserModal({ isOpen, onClose, editingStudent, triggerToas
                         </div>
 
                         {/* Sağ Kolon: Manuel Eğitim Atama */}
-                        <div>
-                            <h3 style={{ fontSize: '14px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', color: '#334155' }}>
-                                <BookOpen size={16} /> Manuel Eğitim Tanımla
-                            </h3>
-                            <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '12px', lineHeight: '1.5' }}>
-                                Öğrencinin erişim yetkisi olduğu kursları aşağıdan seçebilirsiniz. Öğrenci giriş yaptığında bu kursları panellerinde göreceklerdir.
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                <h3 style={{ fontSize: '13px', fontWeight: '800', margin: '0', display: 'flex', alignItems: 'center', gap: '8px', color: '#334155' }}>
+                                    <BookOpen size={15} /> Manuel Eğitim Tanımla
+                                </h3>
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                    <button 
+                                        type="button" 
+                                        onClick={handleSelectAllCourses} 
+                                        style={{ border: 'none', background: 'none', color: '#3b82f6', fontSize: '10px', fontWeight: '700', cursor: 'pointer', padding: '0' }}
+                                    >
+                                        Tümünü Seç
+                                    </button>
+                                    <span style={{ color: '#cbd5e1', fontSize: '10px' }}>|</span>
+                                    <button 
+                                        type="button" 
+                                        onClick={handleClearCourses} 
+                                        style={{ border: 'none', background: 'none', color: '#ef4444', fontSize: '10px', fontWeight: '700', cursor: 'pointer', padding: '0' }}
+                                    >
+                                        Temizle
+                                    </button>
+                                </div>
+                            </div>
+                            <p style={{ fontSize: '11px', color: '#64748b', marginBottom: '10px', lineHeight: '1.4' }}>
+                                Öğrencinin erişimi olacak eğitimleri işaretleyin.
                             </p>
 
+                            {/* Search bar inside course assignment */}
+                            <div style={{ position: 'relative', marginBottom: '10px' }}>
+                                <input 
+                                    type="text"
+                                    placeholder="Eğitim veya bakanlık ara..."
+                                    value={courseSearch}
+                                    onChange={(e) => setCourseSearch(e.target.value)}
+                                    className={styles.formInput}
+                                    style={{ padding: '8px 12px', fontSize: '12px', width: '100%' }}
+                                />
+                            </div>
+
                             <div style={{ 
-                                maxHeight: '300px', 
+                                maxHeight: '250px', 
                                 overflowY: 'auto', 
-                                border: '1px solid #e2e8f0', 
-                                borderRadius: '8px',
-                                padding: '12px',
+                                border: '1px solid #cbd5e1', 
+                                borderRadius: '12px',
+                                padding: '10px',
                                 display: 'flex',
                                 flexDirection: 'column',
-                                gap: '8px'
+                                gap: '6px',
+                                background: '#f8fafc',
+                                flexGrow: 1
                             }}>
-                                {products.length === 0 ? (
-                                    <p style={{ fontSize: '13px', color: '#94a3b8', textAlign: 'center', padding: '20px 0' }}>Sistemde kayıtlı kurs bulunamadı.</p>
+                                {filteredProducts.length === 0 ? (
+                                    <p style={{ fontSize: '12px', color: '#94a3b8', textAlign: 'center', padding: '20px 0' }}>Uyumlu eğitim bulunamadı.</p>
                                 ) : (
-                                    products.map(product => (
-                                        <label key={product.id} style={{ 
-                                            display: 'flex', 
-                                            alignItems: 'flex-start', 
-                                            gap: '10px', 
-                                            padding: '8px',
-                                            borderRadius: '6px',
-                                            background: enrolledCourses.includes(product.id) ? '#eff6ff' : 'transparent',
-                                            border: enrolledCourses.includes(product.id) ? '1px solid #bfdbfe' : '1px solid transparent',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.2s'
-                                        }}>
-                                            <input 
-                                                type="checkbox" 
-                                                checked={enrolledCourses.includes(product.id)}
-                                                onChange={() => toggleCourse(product.id)}
-                                                style={{ marginTop: '4px' }}
-                                            />
-                                            <div>
-                                                <div style={{ fontSize: '13px', fontWeight: '500', color: '#0f172a' }}>{product.name}</div>
-                                                <div style={{ fontSize: '11px', color: '#64748b' }}>{kurumlar.find(k => k.slug === product.kurumSlug)?.name || product.kurumSlug}</div>
-                                            </div>
-                                        </label>
-                                    ))
+                                    filteredProducts.map(product => {
+                                        const isSelected = enrolledCourses.includes(product.id)
+                                        return (
+                                            <label key={product.id} style={{ 
+                                                display: 'flex', 
+                                                alignItems: 'flex-start', 
+                                                gap: '10px', 
+                                                padding: '8px 12px',
+                                                borderRadius: '8px',
+                                                background: isSelected ? '#ffffff' : 'transparent',
+                                                border: isSelected ? '1px solid #0f172a' : '1px solid transparent',
+                                                boxShadow: isSelected ? '0 4px 12px -4px rgba(15, 23, 42, 0.08)' : 'none',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.15s ease'
+                                            }}>
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={isSelected}
+                                                    onChange={() => toggleCourse(product.id)}
+                                                    style={{ marginTop: '3px', cursor: 'pointer' }}
+                                                />
+                                                <div>
+                                                    <div style={{ fontSize: '12px', fontWeight: '700', color: isSelected ? '#0f172a' : '#334155', transition: 'color 0.15s ease' }}>{product.name}</div>
+                                                    <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', fontWeight: '600' }}>{kurumlar.find(k => k.slug === product.kurumSlug)?.name || product.kurumSlug}</div>
+                                                </div>
+                                            </label>
+                                        )
+                                    })
                                 )}
                             </div>
                         </div>
                     </div>
 
-                    <div className={styles.modalFooter} style={{ marginTop: '24px' }}>
-                        <button type="button" onClick={onClose} className="btn btn-outline">İptal</button>
-                        <button type="submit" className="btn btn-primary">
-                            <Save size={16} />
-                            {editingStudent ? 'Değişiklikleri Kaydet' : 'Öğrenciyi Kaydet'}
+                    <div className={styles.modalFooter}>
+                        <button type="button" onClick={onClose} className="btn btn-outline" style={{ padding: '8px 16px', fontSize: '13px' }}>İptal</button>
+                        <button type="submit" className="btn btn-primary" style={{ padding: '8px 16px', fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                            <Save size={14} />
+                            <span>{editingStudent ? 'Değişiklikleri Kaydet' : 'Öğrenciyi Kaydet'}</span>
                         </button>
                     </div>
                 </form>

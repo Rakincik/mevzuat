@@ -24,6 +24,21 @@ export default function CartPage() {
     const [customerName, setCustomerName] = useState('')
     const [customerEmail, setCustomerEmail] = useState('')
     const [customerPhone, setCustomerPhone] = useState('')
+    const [paymentMethod, setPaymentMethod] = useState<'havale' | 'cc'>('havale')
+    const [receiptData, setReceiptData] = useState<string>('')
+    const [receiptPreview, setReceiptPreview] = useState<boolean>(false)
+
+    const handleReceiptUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (file) {
+            const reader = new FileReader()
+            reader.onload = () => {
+                setReceiptData(reader.result as string)
+                setReceiptPreview(true)
+            }
+            reader.readAsDataURL(file)
+        }
+    }
 
     const totalPrice = getTotalPrice()
 
@@ -87,7 +102,7 @@ export default function CartPage() {
         }
 
         if (foundCoupon) {
-            if (foundCoupon.maxUses !== undefined && foundCoupon.usedCount >= foundCoupon.maxUses) {
+            if (foundCoupon.maxUses !== undefined && foundCoupon.maxUses !== null && foundCoupon.usedCount >= foundCoupon.maxUses) {
                 setCouponError('Bu kuponun maksimum kullanım sınırına ulaşıldı.')
                 return
             }
@@ -132,7 +147,7 @@ export default function CartPage() {
             id: 'item_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
             productId: item.id,
             name: item.name,
-            price: item.price,
+            price: item.salePrice || item.price,
             quantity: item.quantity
         }))
 
@@ -147,6 +162,8 @@ export default function CartPage() {
             tax: vat,
             total: finalTotal,
             status: 'PENDING' as const,
+            paymentMethod: paymentMethod,
+            receipt: paymentMethod === 'havale' ? receiptData : '',
             createdAt: new Date().toISOString()
         }
 
@@ -337,29 +354,113 @@ export default function CartPage() {
                         </div>
                         <form onSubmit={handleCheckoutSubmit}>
                             <div className={styles.modalBody}>
-                                {(settings.bankIban1 || settings.bankIban2) && (
-                                    <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '8px', marginBottom: '24px', border: '1px solid #e2e8f0' }}>
-                                        <h3 style={{ fontSize: '14px', fontWeight: '800', color: '#0f172a', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <div style={{ marginBottom: '24px' }}>
+                                    <label style={{ fontSize: '12px', fontWeight: '800', color: '#475569', marginBottom: '8px', display: 'block', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                                        Ödeme Yöntemi Seçin *
+                                    </label>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                        <div 
+                                            onClick={() => setPaymentMethod('havale')}
+                                            style={{
+                                                padding: '14px',
+                                                border: paymentMethod === 'havale' ? '2.5px solid #2563eb' : '1.5px solid #cbd5e1',
+                                                borderRadius: '10px',
+                                                background: paymentMethod === 'havale' ? '#f0f9ff' : 'white',
+                                                cursor: 'pointer',
+                                                textAlign: 'center',
+                                                transition: 'all 0.15s ease',
+                                                boxShadow: paymentMethod === 'havale' ? '0 4px 12px rgba(37, 99, 235, 0.08)' : 'none'
+                                            }}
+                                        >
+                                            <span style={{ display: 'block', fontSize: '13px', fontWeight: '800', color: paymentMethod === 'havale' ? '#1e40af' : '#475569' }}>
+                                                🏦 EFT / Banka Havalesi
+                                            </span>
+                                            <span style={{ display: 'block', fontSize: '10px', color: paymentMethod === 'havale' ? '#2563eb' : '#64748b', marginTop: '2px', fontWeight: '600' }}>
+                                                IBAN ile Kolay Ödeme
+                                            </span>
+                                        </div>
+                                        
+                                        <div 
+                                            style={{
+                                                padding: '14px',
+                                                border: '1.5px dashed #cbd5e1',
+                                                borderRadius: '10px',
+                                                background: '#f8fafc',
+                                                cursor: 'not-allowed',
+                                                textAlign: 'center',
+                                                opacity: 0.8
+                                            }}
+                                            title="Kredi kartı ile ödeme entegrasyonu yakında aktif olacaktır."
+                                        >
+                                            <span style={{ display: 'block', fontSize: '13px', fontWeight: '800', color: '#94a3b8' }}>
+                                                💳 Kredi Kartı
+                                            </span>
+                                            <span style={{ display: 'block', fontSize: '10px', color: '#cbd5e1', marginTop: '2px', fontWeight: '600' }}>
+                                                Yakında Aktif Olacak
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {paymentMethod === 'havale' && (
+                                    <div style={{ background: '#f0fdf4', padding: '16px', borderRadius: '10px', marginBottom: '24px', border: '1.5px solid #10b981', boxShadow: '0 4px 12px rgba(16, 185, 129, 0.04)' }}>
+                                        <h3 style={{ fontSize: '13px', fontWeight: '800', color: '#14532d', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                             🏦 EFT / Havale ile Ödeme Bilgileri
                                         </h3>
-                                        <p style={{ fontSize: '13px', color: '#475569', marginBottom: '12px' }}>
-                                            Lütfen ödemenizi aşağıdaki hesaplardan birine yapın ve açıklama kısmına <strong>Adınızı Soyadınızı</strong> yazmayı unutmayın.
+                                        <p style={{ fontSize: '11px', color: '#15803d', marginBottom: '12px', lineHeight: '1.4' }}>
+                                            Lütfen sipariş tutarını aşağıdaki IBAN hesabına gönderin. Açıklama alanına <strong>{customerName || 'Adınızı Soyadınızı'}</strong> yazmayı unutmayın.
                                         </p>
-                                        <div style={{ fontSize: '13px', background: 'white', padding: '12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
-                                            <div style={{ marginBottom: '8px' }}><strong>Alıcı Unvanı:</strong> {settings.bankAccountHolder}</div>
-                                            {settings.bankName1 && settings.bankIban1 && (
-                                                <div style={{ marginBottom: settings.bankName2 ? '8px' : '0' }}>
-                                                    <strong>{settings.bankName1}:</strong> <span style={{ fontFamily: 'monospace', fontSize: '14px' }}>{settings.bankIban1}</span>
+                                        <div style={{ fontSize: '12px', background: 'white', padding: '12px', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
+                                            <div style={{ marginBottom: '8px', color: '#1e293b' }}>
+                                                <strong>Alıcı Unvanı:</strong> {settings?.bankAccountHolder || 'Mevzuat Adam Eğitim A.Ş.'}
+                                            </div>
+                                            <div style={{ marginBottom: '8px', color: '#1e293b' }}>
+                                                <strong>{settings?.bankName1 || 'Ziraat Bankası'}:</strong> 
+                                                <span style={{ fontFamily: 'monospace', fontSize: '13px', fontWeight: '700', marginLeft: '6px', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>
+                                                    {settings?.bankIban1 || 'TR12 0001 0000 0000 0000 0000 01'}
+                                                </span>
+                                            </div>
+                                            {settings?.bankName2 && settings?.bankIban2 && (
+                                                <div style={{ color: '#1e293b' }}>
+                                                    <strong>{settings.bankName2}:</strong> 
+                                                    <span style={{ fontFamily: 'monospace', fontSize: '13px', fontWeight: '700', marginLeft: '6px', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>
+                                                        {settings.bankIban2}
+                                                    </span>
                                                 </div>
                                             )}
-                                            {settings.bankName2 && settings.bankIban2 && (
-                                                <div>
-                                                    <strong>{settings.bankName2}:</strong> <span style={{ fontFamily: 'monospace', fontSize: '14px' }}>{settings.bankIban2}</span>
+                                        </div>
+
+                                        {/* Ödeme Dekontu Yükleme Alnı */}
+                                        <div style={{ marginTop: '16px', borderTop: '1px dashed #bbf7d0', paddingTop: '16px' }}>
+                                            <label htmlFor="cust-receipt" style={{ display: 'block', fontSize: '12px', fontWeight: '800', color: '#14532d', marginBottom: '6px' }}>
+                                                📄 Ödeme Dekontu Yükle (Görsel veya PDF) *
+                                            </label>
+                                            <input 
+                                                id="cust-receipt"
+                                                type="file" 
+                                                accept="image/*,application/pdf"
+                                                required={paymentMethod === 'havale'}
+                                                onChange={handleReceiptUpload}
+                                                style={{ 
+                                                    width: '100%',
+                                                    padding: '10px',
+                                                    fontSize: '12px',
+                                                    border: '1.5px dashed #10b981',
+                                                    borderRadius: '8px',
+                                                    background: 'white',
+                                                    cursor: 'pointer',
+                                                    color: '#1e293b'
+                                                }}
+                                            />
+                                            {receiptPreview && (
+                                                <div style={{ marginTop: '6px', fontSize: '11px', color: '#16a34a', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                    <span>✓ Dekont başarıyla yüklendi. Siparişinizi tamamlayabilirsiniz!</span>
                                                 </div>
                                             )}
                                         </div>
                                     </div>
                                 )}
+
                                 <div className={styles.checkoutForm}>
                                     <div className={styles.formGroup}>
                                         <label htmlFor="cust-name">Ad Soyad *</label>
@@ -370,7 +471,7 @@ export default function CartPage() {
                                             className="input"
                                             value={customerName}
                                             onChange={(e) => setCustomerName(e.target.value)}
-                                            placeholder="Örn: Rüstem Rakıncık"
+                                            placeholder="Adınız ve Soyadınız"
                                         />
                                     </div>
                                     <div className={styles.formGroup}>

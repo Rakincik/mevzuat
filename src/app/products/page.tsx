@@ -136,6 +136,8 @@ function ProductsPageContent() {
 
     // Dynamic filtering
     const filteredProducts = allProducts.filter(product => {
+        if (product.status === 'passive') return false
+
         // Search text matching
         const matchesSearch = searchQuery === '' || 
             product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -148,7 +150,8 @@ function ProductsPageContent() {
 
         // Alt Kategori (Dersler) matching
         const matchesAltKategori = selectedAltKategoriler.length === 0 ||
-            (product.altKategoriSlug && selectedAltKategoriler.includes(product.altKategoriSlug))
+            (product.altKategoriSlug && selectedAltKategoriler.includes(product.altKategoriSlug)) ||
+            (product.altKategoriSlugs && product.altKategoriSlugs.some(slug => selectedAltKategoriler.includes(slug)))
 
         // Category matching
         const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(product.categoryName)
@@ -187,7 +190,19 @@ function ProductsPageContent() {
                 return discB - discA
             case 'önerilen':
             default:
-                return 0 // keep database order
+                let orderA = a.order ?? 9999
+                let orderB = b.order ?? 9999
+
+                if (selectedAltKategoriler.length === 1) {
+                    const altCatSlug = selectedAltKategoriler[0]
+                    const keyA = selectedKurumlar.length === 1 ? `${selectedKurumlar[0]}_${altCatSlug}` : `${a.kurumSlug}_${altCatSlug}`
+                    const keyB = selectedKurumlar.length === 1 ? `${selectedKurumlar[0]}_${altCatSlug}` : `${b.kurumSlug}_${altCatSlug}`
+                    orderA = a.categoryOrders?.[keyA] ?? a.order ?? 9999
+                    orderB = b.categoryOrders?.[keyB] ?? b.order ?? 9999
+                }
+
+                if (orderA !== orderB) return orderA - orderB
+                return a.name.localeCompare(b.name, 'tr')
         }
     })
 

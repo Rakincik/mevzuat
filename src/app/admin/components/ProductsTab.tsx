@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Search, Plus, Star, Edit3, Trash2, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, Plus, Star, Edit3, Trash2, AlertCircle, ChevronLeft, ChevronRight, Copy } from 'lucide-react'
 import { useApp, Product } from '@/context/AppContext'
 import { CustomSelect } from './CustomSelect'
 import styles from '../page.module.css'
@@ -13,7 +13,7 @@ interface ProductsTabProps {
 }
 
 export default function ProductsTab({ triggerToast, onAddProduct, onEditProduct }: ProductsTabProps) {
-    const { products, kurumlar, featuredIds, toggleFeatured, deleteProduct, triggerConfirm, bulkDeleteProducts } = useApp()
+    const { products, kurumlar, featuredIds, toggleFeatured, deleteProduct, triggerConfirm, bulkDeleteProducts, addProduct } = useApp()
     const [searchQuery, setSearchQuery] = useState('')
     const [selectedKurum, setSelectedKurum] = useState('all')
     const [currentPage, setCurrentPage] = useState(1)
@@ -38,6 +38,19 @@ export default function ProductsTab({ triggerToast, onAddProduct, onEditProduct 
                 triggerToast('Eğitim silindi.')
             }
         })
+    }
+
+    const handleProductDuplicate = (product: Product) => {
+        const clonedProduct: Product = {
+            ...product,
+            id: 'prod_' + Date.now(),
+            name: `${product.name} (Kopya)`,
+            slug: `${product.slug}-kopya`,
+            isFeatured: false,
+            order: (product.order ?? 9999) + 1
+        }
+        addProduct(clonedProduct)
+        triggerToast('Eğitim başarıyla kopyalandı! Düzenlemek için tıklayabilirsiniz.')
     }
 
     // Filter logic
@@ -106,6 +119,7 @@ export default function ProductsTab({ triggerToast, onAddProduct, onEditProduct 
                         <Search className={styles.searchIcon} size={16} />
                     </div>
 
+                    <div className={styles.selectBox} style={{ minWidth: '220px' }}>
                         <CustomSelect
                             value={selectedKurum}
                             onChange={(val) => setSelectedKurum(val as string)}
@@ -114,7 +128,9 @@ export default function ProductsTab({ triggerToast, onAddProduct, onEditProduct 
                                 ...kurumlar.map(k => ({ value: k.slug, label: k.name }))
                             ]}
                         />
+                    </div>
 
+                    <div className={styles.selectBox} style={{ minWidth: '180px' }}>
                         <CustomSelect
                             value={itemsPerPage}
                             onChange={(val) => setItemsPerPage(val === 'all' ? 'all' : parseInt(val as string))}
@@ -126,6 +142,7 @@ export default function ProductsTab({ triggerToast, onAddProduct, onEditProduct 
                                 { value: 'all', label: 'Tümünü Göster' }
                             ]}
                         />
+                    </div>
                 </div>
 
                 <button className={styles.btnAddItem} onClick={onAddProduct}>
@@ -230,6 +247,14 @@ export default function ProductsTab({ triggerToast, onAddProduct, onEditProduct 
                                         title={isFeatured ? "Öne çıkarmayı kaldır" : "Öne çıkar"}
                                     >
                                         <Star size={14} fill={isFeatured ? "currentColor" : "none"} />
+                                    </button>
+                                    <button 
+                                        className={styles.actionEditBtn}
+                                        onClick={() => handleProductDuplicate(product)}
+                                        title="Eğitimi Kopyala / Çoğalt"
+                                        style={{ color: '#8b5cf6', borderColor: '#d8b4fe', background: '#f5f3ff' }}
+                                    >
+                                        <Copy size={14} />
                                     </button>
                                     <button 
                                         className={styles.actionEditBtn}

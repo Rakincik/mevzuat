@@ -25,8 +25,7 @@ export default function Footer() {
     const companyList = [
         { name: 'Hakkımızda', href: '/about' },
         { name: 'Eğitmenlerimiz', href: '/instructors' },
-        { name: 'Referanslar', href: '/testimonials' },
-        { name: 'Yönetim Paneli', href: '/admin' }
+        { name: 'Referanslar', href: '/testimonials' }
     ]
 
     // Find and push dynamic pages if they are published

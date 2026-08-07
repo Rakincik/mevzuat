@@ -17,62 +17,7 @@ export interface Kurum {
     seoDescription?: string
 }
 
-export const allKurumlar: Kurum[] = [
-    {
-        id: 'k1',
-        name: 'Hazine ve Maliye Bakanlığı',
-        slug: 'hazine-maliye-bakanligi',
-        description: 'Görevde Yükselme, V.H.K.İ ve Şef kadroları için kapsamlı eğitim setleri.',
-        icon: 'Landmark',
-        color: '#2563EB',
-        productCount: 8
-    },
-    {
-        id: 'k2',
-        name: 'Adalet Bakanlığı',
-        slug: 'adalet-bakanligi',
-        description: 'Zabıt Kâtibi, İcra Müdürlüğü ve Yazı İşleri Müdürlüğü sınav hazırlıkları.',
-        icon: 'Scale',
-        color: '#7c3aed',
-        productCount: 6
-    },
-    {
-        id: 'k3',
-        name: 'İçişleri Bakanlığı',
-        slug: 'icisleri-bakanligi',
-        description: 'Nüfus ve Vatandaşlık İşleri, İl Müdürlükleri GYS hazırlıkları.',
-        icon: 'Shield',
-        color: '#0d9488',
-        productCount: 5
-    },
-    {
-        id: 'k4',
-        name: 'Sağlık Bakanlığı',
-        slug: 'saglik-bakanligi',
-        description: 'Sağlık personeli görevde yükselme ve unvan değişikliği sınav hazırlıkları.',
-        icon: 'HeartPulse',
-        color: '#dc2626',
-        productCount: 4
-    },
-    {
-        id: 'k5',
-        name: 'Milli Eğitim Bakanlığı',
-        slug: 'milli-egitim-bakanligi',
-        description: 'Şube Müdürü, Şef ve diğer kadrolar için görevde yükselme eğitimleri.',
-        icon: 'GraduationCap',
-        color: '#d97706',
-        productCount: 5
-    },
-    {
-        id: 'k6',
-        name: 'Genel GYS / Ortak Mevzuat',
-        slug: 'genel-gys',
-        description: 'Tüm kurumlarda geçerli ortak mevzuat dersleri: Anayasa, İdare Hukuku, 657 vb.',
-        icon: 'Briefcase',
-        color: '#475569',
-        productCount: 12
-    }
-]
+export const allKurumlar: Kurum[] = []
 
 export function getKurumBySlug(slug: string): Kurum | undefined {
     return allKurumlar.find(k => k.slug === slug)
@@ -121,6 +66,7 @@ export interface Product {
     exclusiveCoupons?: string
     exclusiveCouponsList?: ProductCoupon[]
     order?: number
+    categoryOrders?: Record<string, number>
     features?: string[]
     whyUs?: { title: string; description: string }[]
     badges?: string[]

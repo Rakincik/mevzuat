@@ -13,10 +13,11 @@ import styles from '../page.module.css'
 interface PagesTabProps {
     onEditPage: (page: EditablePage) => void
     onCreateNewPage: () => void
+    triggerToast: (message: string) => void
 }
 
-export default function PagesTab({ onEditPage, onCreateNewPage }: PagesTabProps) {
-    const { pages, deletePage, triggerConfirm } = useApp()
+export default function PagesTab({ onEditPage, onCreateNewPage, triggerToast }: PagesTabProps) {
+    const { pages, deletePage, triggerConfirm, updatePage } = useApp()
     const [searchQuery, setSearchQuery] = useState('')
     const [copiedId, setCopiedId] = useState<string | null>(null)
 
@@ -66,12 +67,19 @@ export default function PagesTab({ onEditPage, onCreateNewPage }: PagesTabProps)
         }
     }
 
-    const copyToClipboard = (slug: string, id: string) => {
+    const copyToClipboard = (slug: string, id: string, title: string) => {
         if (typeof window === 'undefined') return
-        const fullUrl = `${window.location.origin}/pages/${slug}`
+        const fullUrl = id === 'home' ? window.location.origin : `${window.location.origin}/pages/${slug}`
         navigator.clipboard.writeText(fullUrl)
         setCopiedId(id)
+        triggerToast(`📋 "${title}" sayfa linki panoya kopyalandı!`)
         setTimeout(() => setCopiedId(null), 2000)
+    }
+
+    const togglePageStatus = (page: EditablePage) => {
+        const nextStatus = page.status === 'published' ? 'draft' : 'published'
+        updatePage(page.id, { status: nextStatus })
+        triggerToast(`Sayfa yayın durumu güncellendi: ${nextStatus === 'published' ? 'Yayında 🟢' : 'Taslak 🟡'}`)
     }
 
     const handleDeletePage = (page: EditablePage) => {
@@ -189,7 +197,7 @@ export default function PagesTab({ onEditPage, onCreateNewPage }: PagesTabProps)
                                                 </span>
                                                 <button
                                                     type="button"
-                                                    onClick={() => copyToClipboard(page.slug, page.id)}
+                                                    onClick={() => copyToClipboard(page.slug, page.id, page.title)}
                                                     style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', color: copiedId === page.id ? '#10b981' : '#94a3b8', transition: 'color 0.15s ease' }}
                                                     title="Sayfa linkini kopyala"
                                                 >
@@ -208,12 +216,34 @@ export default function PagesTab({ onEditPage, onCreateNewPage }: PagesTabProps)
 
                                     {/* Column 3: Yayın Durumu */}
                                     <div>
-                                        <span 
+                                        <button 
+                                            type="button"
+                                            onClick={() => togglePageStatus(page)}
                                             className={`${styles.statusPill} ${page.status === 'published' ? styles['statusPill-published'] : styles['statusPill-draft']}`}
-                                            style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: 'bold' }}
+                                            style={{ 
+                                                padding: '5px 10px', 
+                                                borderRadius: '6px', 
+                                                fontSize: '10px', 
+                                                fontWeight: 'bold', 
+                                                cursor: 'pointer', 
+                                                border: 'none',
+                                                transition: 'all 0.15s ease',
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '4px'
+                                            }}
+                                            title="Durumu değiştirmek için tıklayın"
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.transform = 'scale(1.05)'
+                                                e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)'
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.transform = 'none'
+                                                e.currentTarget.style.boxShadow = 'none'
+                                            }}
                                         >
-                                            {page.status === 'published' ? 'Yayında' : 'Taslak'}
-                                        </span>
+                                            <span>{page.status === 'published' ? '🟢 Yayında' : '🟡 Taslak'}</span>
+                                        </button>
                                     </div>
 
                                     {/* Column 4: Premium actions (Edit & Sitede Gör) */}

@@ -29,6 +29,7 @@ const KurumModal = dynamic(() => import('./components/KurumModal'), { ssr: false
 const PageCMSModal = dynamic(() => import('./components/PageCMSModal'), { ssr: false })
 const AltKategoriModal = dynamic(() => import('./components/AltKategoriModal'), { ssr: false })
 const UserModal = dynamic(() => import('./components/UserModal'), { ssr: false })
+const ProductReorderModal = dynamic(() => import('./components/ProductReorderModal'), { ssr: false })
 
 export default function AdminPage() {
     const { 
@@ -72,6 +73,17 @@ export default function AdminPage() {
     const [editingPage, setEditingPage] = useState<EditablePage | null>(null)
     const [isUserModalOpen, setIsUserModalOpen] = useState(false)
     const [editingStudent, setEditingStudent] = useState<Student | null>(null)
+
+    // Product reorder modal states
+    const [isReorderModalOpen, setIsReorderModalOpen] = useState(false)
+    const [reorderSubcategory, setReorderSubcategory] = useState<AltKategori | null>(null)
+    const [reorderKurum, setReorderKurum] = useState<Kurum | null>(null)
+
+    const openManageProductOrderModal = (subcat: AltKategori, activeKurum: Kurum) => {
+        setReorderSubcategory(subcat)
+        setReorderKurum(activeKurum)
+        setIsReorderModalOpen(true)
+    }
 
     const triggerToast = (message: string) => {
         setToastMessage(message)
@@ -365,11 +377,12 @@ export default function AdminPage() {
                             onEditKurum={openEditKurumModal} 
                             onAddAltKategori={openAddAltKategoriModal}
                             onEditAltKategori={openEditAltKategoriModal}
+                            onManageProductOrder={openManageProductOrderModal}
                         />
                     )}
                     {activeTab === 'featured' && <FeaturedTab triggerToast={triggerToast} />}
                     {activeTab === 'coupons' && <CouponsTab triggerToast={triggerToast} />}
-                    {activeTab === 'pages' && <PagesTab onEditPage={openEditPageModal} onCreateNewPage={openCreateNewPageModal} />}
+                    {activeTab === 'pages' && <PagesTab onEditPage={openEditPageModal} onCreateNewPage={openCreateNewPageModal} triggerToast={triggerToast} />}
                     {activeTab === 'users' && <UsersTab triggerToast={triggerToast} onAddStudent={openAddUserModal} onEditStudent={openEditUserModal} />}
                 </main>
             </div>
@@ -410,6 +423,18 @@ export default function AdminPage() {
                 isOpen={isUserModalOpen}
                 onClose={() => setIsUserModalOpen(false)}
                 editingStudent={editingStudent}
+                triggerToast={triggerToast}
+            />
+
+            <ProductReorderModal
+                isOpen={isReorderModalOpen}
+                onClose={() => {
+                    setIsReorderModalOpen(false)
+                    setReorderSubcategory(null)
+                    setReorderKurum(null)
+                }}
+                kurum={reorderKurum}
+                altKategori={reorderSubcategory}
                 triggerToast={triggerToast}
             />
 

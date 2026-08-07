@@ -107,7 +107,7 @@ export default function CustomPageDetail() {
                     <div className={styles.aboutWrapper}>
                         <div className={styles.aboutCard}>
                             <h2>Kurumsal Hikayemiz</h2>
-                            <p className={styles.aboutTextContent}>{page.aboutText}</p>
+                            <p className={styles.aboutTextContent} dangerouslySetInnerHTML={{ __html: page.aboutText || '' }} />
                         </div>
 
                         <div className={styles.visionMissionGrid}>
@@ -116,14 +116,14 @@ export default function CustomPageDetail() {
                                     <Zap size={20} />
                                 </div>
                                 <h3>Vizyonumuz</h3>
-                                <p>{page.aboutVision}</p>
+                                <p dangerouslySetInnerHTML={{ __html: page.aboutVision || '' }} />
                             </div>
                             <div className={styles.missionCard}>
                                 <div className={styles.cardHeaderIcon} style={{ background: '#faf5ff', color: '#7c3aed' }}>
                                     <BookOpen size={20} />
                                 </div>
                                 <h3>Misyonumuz</h3>
-                                <p>{page.aboutMission}</p>
+                                <p dangerouslySetInnerHTML={{ __html: page.aboutMission || '' }} />
                             </div>
                         </div>
 

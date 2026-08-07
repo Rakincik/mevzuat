@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Plus, Edit3, Trash2, AlertCircle, Landmark, FolderOpen, Layers, Info } from 'lucide-react'
+import { Plus, Edit3, Trash2, AlertCircle, Landmark, FolderOpen, Layers, Info, ArrowUpDown } from 'lucide-react'
 import { useApp, Kurum, AltKategori } from '@/context/AppContext'
 import styles from '../page.module.css'
 import {
@@ -18,8 +18,10 @@ import {
     SortableContext,
     sortableKeyboardCoordinates,
     verticalListSortingStrategy,
+    rectSortingStrategy,
 } from '@dnd-kit/sortable';
 import { SortableKurumItem } from './SortableKurumItem';
+import { SortableAltKategoriItem } from './SortableAltKategoriItem';
 
 interface KurumlarTabProps {
     triggerToast: (message: string) => void
@@ -27,10 +29,11 @@ interface KurumlarTabProps {
     onEditKurum: (kurum: Kurum) => void
     onAddAltKategori: (initialKurumSlug?: string) => void
     onEditAltKategori: (cat: AltKategori) => void
+    onManageProductOrder: (subcat: AltKategori, activeKurum: Kurum) => void
 }
 
-export default function KurumlarTab({ triggerToast, onAddKurum, onEditKurum, onAddAltKategori, onEditAltKategori }: KurumlarTabProps) {
-    const { kurumlar, altKategoriler, products, deleteKurum, deleteAltKategori, triggerConfirm, reorderKurumlar } = useApp()
+export default function KurumlarTab({ triggerToast, onAddKurum, onEditKurum, onAddAltKategori, onEditAltKategori, onManageProductOrder }: KurumlarTabProps) {
+    const { kurumlar, altKategoriler, products, deleteKurum, deleteAltKategori, triggerConfirm, reorderKurumlar, reorderAltKategoriler } = useApp()
     const [activeKurumSlug, setActiveKurumSlug] = useState<string>('')
 
     // Set first institution as active by default
@@ -74,6 +77,32 @@ export default function KurumlarTab({ triggerToast, onAddKurum, onEditKurum, onA
 
             reorderKurumlar(updatedList);
             triggerToast('Sıralama güncellendi.');
+        }
+    };
+
+    const handleDragEndAltKategori = (event: DragEndEvent) => {
+        const { active, over } = event;
+
+        if (over && active.id !== over.id) {
+            const oldIndex = activeSubcategories.findIndex((s) => s.id === active.id);
+            const newIndex = activeSubcategories.findIndex((s) => s.id === over.id);
+
+            const reorderedSubset = arrayMove(activeSubcategories, oldIndex, newIndex);
+            
+            const orderMap = new Map<string, number>();
+            reorderedSubset.forEach((subcat, index) => {
+                orderMap.set(subcat.id, index + 1);
+            });
+
+            const updatedGlobalList = altKategoriler.map((subcat) => {
+                if (orderMap.has(subcat.id)) {
+                    return { ...subcat, order: orderMap.get(subcat.id) };
+                }
+                return subcat;
+            });
+
+            reorderAltKategoriler(updatedGlobalList);
+            triggerToast('Kategori sıralaması güncellendi.');
         }
     };
 
@@ -155,7 +184,7 @@ export default function KurumlarTab({ triggerToast, onAddKurum, onEditKurum, onA
                             </button>
                         </div>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '68vh', overflowY: 'auto', paddingRight: '4px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                                 <SortableContext items={sortedKurumlar.map(k => k.id)} strategy={verticalListSortingStrategy}>
                                     {sortedKurumlar.map(kurum => (
@@ -196,103 +225,59 @@ export default function KurumlarTab({ triggerToast, onAddKurum, onEditKurum, onA
                                 </button>
                             </div>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
-                                {activeSubcategories.map(subcat => {
-                                    const subcatProductCount = products.filter(p => 
-                                        (p.kurumSlug === activeKurum.slug || (p.kurumSlugs && p.kurumSlugs.includes(activeKurum.slug))) &&
-                                        (p.altKategoriSlug === subcat.slug || (p.altKategoriSlugs && p.altKategoriSlugs.includes(subcat.slug)))
-                                    ).length
+                            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEndAltKategori}>
+                                <SortableContext items={activeSubcategories.map(s => s.id)} strategy={rectSortingStrategy}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+                                        {activeSubcategories.map(subcat => {
+                                            const subcatProductCount = products.filter(p => 
+                                                (p.kurumSlug === activeKurum.slug || (p.kurumSlugs && p.kurumSlugs.includes(activeKurum.slug))) &&
+                                                (p.altKategoriSlug === subcat.slug || (p.altKategoriSlugs && p.altKategoriSlugs.includes(subcat.slug)))
+                                            ).length
 
-                                    return (
+                                            return (
+                                                <SortableAltKategoriItem
+                                                    key={subcat.id}
+                                                    subcat={subcat}
+                                                    activeKurumColor={activeKurum.color}
+                                                    subcatProductCount={subcatProductCount}
+                                                    onEdit={() => onEditAltKategori(subcat)}
+                                                    onDelete={() => handleAltCatDelete(subcat.id, subcat.name)}
+                                                    onManageOrder={() => onManageProductOrder(subcat, activeKurum)}
+                                                    kurumlar={kurumlar}
+                                                    activeKurumSlug={activeKurum.slug}
+                                                    globalProducts={products}
+                                                />
+                                            )
+                                        })}
+
                                         <div 
-                                            key={subcat.id} 
+                                            onClick={() => onAddAltKategori(activeKurum.slug)}
                                             style={{ 
-                                                background: 'white', 
-                                                border: '1px solid #e2e8f0', 
+                                                border: '2px dashed #cbd5e1', 
                                                 borderRadius: '12px', 
-                                                padding: '18px',
-                                                display: 'flex',
-                                                flexDirection: 'column',
-                                                justifyContent: 'space-between',
-                                                gap: '12px',
-                                                boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
-                                                position: 'relative'
+                                                padding: '24px', 
+                                                display: 'flex', 
+                                                flexDirection: 'column', 
+                                                alignItems: 'center', 
+                                                justifyContent: 'center', 
+                                                gap: '8px', 
+                                                cursor: 'pointer', 
+                                                background: 'white', 
+                                                color: '#64748b',
+                                                transition: 'all 0.2s ease',
+                                                textAlign: 'center',
+                                                minHeight: '140px'
                                             }}
+                                            onMouseEnter={(e) => e.currentTarget.style.borderColor = activeKurum.color}
+                                            onMouseLeave={(e) => e.currentTarget.style.borderColor = '#cbd5e1'}
                                         >
-                                            <div>
-                                                <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
-                                                    <span style={{ fontSize: '9px', background: '#e2e8f0', color: '#475569', padding: '2px 6px', borderRadius: '4px', fontWeight: '800' }}>#{subcat.order !== undefined ? subcat.order : 999}</span>
-                                                    {subcat.status === 'passive' && (
-                                                        <span style={{ fontSize: '9px', background: '#fee2e2', color: '#ef4444', padding: '2px 6px', borderRadius: '4px', fontWeight: '800' }}>PASİF</span>
-                                                    )}
-                                                </div>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
-                                                    <h4 style={{ fontSize: '14px', fontWeight: '800', color: '#1e293b', margin: '0', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                        <FolderOpen size={14} style={{ color: activeKurum.color }} />
-                                                        <span>{subcat.name}</span>
-                                                    </h4>
-                                                    
-                                                    <div style={{ display: 'flex', gap: '4px' }}>
-                                                        <button 
-                                                            style={{ border: 'none', background: 'none', color: '#64748b', cursor: 'pointer', padding: '4px' }}
-                                                            onClick={() => onEditAltKategori(subcat)}
-                                                            title="Kategoriyi Düzenle"
-                                                        >
-                                                            <Edit3 size={13} />
-                                                        </button>
-                                                        <button 
-                                                            style={{ border: 'none', background: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}
-                                                            onClick={() => handleAltCatDelete(subcat.id, subcat.name)}
-                                                            title="Kategoriyi Sil"
-                                                        >
-                                                            <Trash2 size={13} />
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                                
-                                                <span style={{ fontSize: '10px', color: '#94a3b8', fontFamily: 'monospace', fontWeight: '600' }}>/{subcat.slug}</span>
-                                                <p style={{ fontSize: '12px', color: '#64748b', margin: '8px 0 0 0', lineHeight: '1.4' }}>{subcat.description || 'Açıklama belirtilmemiş.'}</p>
-                                            </div>
-
-                                            <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ fontSize: '11px', fontWeight: '800', color: '#475569', background: '#f1f5f9', padding: '2px 8px', borderRadius: '4px' }}>{subcatProductCount} DERS</span>
-                                                
-                                                {subcat.kurumSlugs.length > 1 && (
-                                                    <span style={{ fontSize: '9px', fontWeight: '700', color: '#059669', background: '#d1fae5', padding: '2px 6px', borderRadius: '4px' }} title={`Bağlı kurumlar: ${subcat.kurumSlugs.join(', ')}`}>
-                                                        🔗 {subcat.kurumSlugs.length} KURUMDA ORTAK
-                                                    </span>
-                                                )}
-                                            </div>
+                                            <Plus size={24} style={{ color: activeKurum.color }} />
+                                            <span style={{ fontSize: '13px', fontWeight: '800', color: '#475569' }}>Yeni Alt Kategori Tanımla</span>
+                                            <span style={{ fontSize: '10px', color: '#94a3b8' }}>Doğrudan {activeKurum.name} kurumuna bağlanır.</span>
                                         </div>
-                                    )
-                                })}
-
-                                <div 
-                                    onClick={() => onAddAltKategori(activeKurum.slug)}
-                                    style={{ 
-                                        border: '2px dashed #cbd5e1', 
-                                        borderRadius: '12px', 
-                                        padding: '24px', 
-                                        display: 'flex', 
-                                        flexDirection: 'column', 
-                                        alignItems: 'center', 
-                                        justifyContent: 'center', 
-                                        gap: '8px', 
-                                        cursor: 'pointer', 
-                                        background: 'white', 
-                                        color: '#64748b',
-                                        transition: 'all 0.2s ease',
-                                        textAlign: 'center',
-                                        minHeight: '140px'
-                                    }}
-                                    onMouseEnter={(e) => e.currentTarget.style.borderColor = activeKurum.color}
-                                    onMouseLeave={(e) => e.currentTarget.style.borderColor = '#cbd5e1'}
-                                >
-                                    <Plus size={24} style={{ color: activeKurum.color }} />
-                                    <span style={{ fontSize: '13px', fontWeight: '800', color: '#475569' }}>Yeni Alt Kategori Tanımla</span>
-                                    <span style={{ fontSize: '10px', color: '#94a3b8' }}>Doğrudan {activeKurum.name} kurumuna bağlanır.</span>
-                                </div>
-                            </div>
+                                    </div>
+                                </SortableContext>
+                            </DndContext>
 
                             {activeSubcategories.length === 0 && (
                                 <div style={{ border: '1px dashed #cbd5e1', borderRadius: '12px', padding: '40px 20px', textAlign: 'center', color: '#94a3b8', background: 'white' }}>

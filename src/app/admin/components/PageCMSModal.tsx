@@ -9,7 +9,7 @@ import {
     ChevronLeft, ChevronRight
 } from 'lucide-react'
 import * as LucideIcons from 'lucide-react'
-import { useApp, EditablePage, FAQItem, PageSection } from '@/context/AppContext'
+import { useApp, EditablePage, FAQItem, PageSection, Product, Kurum, AltKategori } from '@/context/AppContext'
 import CustomSelect from '@/components/ui/CustomSelect'
 import styles from '../page.module.css'
 
@@ -270,13 +270,27 @@ const VisualIconPicker = ({ value, onChange }: { value: string; onChange: (val: 
 }
 
 export default function PageCMSModal({ isOpen, onClose, editingPage, triggerToast }: PageCMSModalProps) {
-    const { updatePage, kurumlar, pages, triggerConfirm } = useApp()
+    const { 
+        updatePage, kurumlar, pages, triggerConfirm, altKategoriler,
+        products, featuredIds, updateFeaturedIds, updateMultipleProducts,
+        reorderKurumlar, reorderAltKategoriler
+    } = useApp()
     
     // UI tabs
     const [activeModalTab, setActiveModalTab] = useState<'content' | 'seo'>('content')
     const [activeHomeTab, setActiveHomeTab] = useState<'announcement' | 'slides' | 'cta' | 'yapboz'>('announcement')
     const [activePreviewSlideIndex, setActivePreviewSlideIndex] = useState(0)
     const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop')
+
+    // Accordion state hooks for better UX
+    const [expandedSlideIndex, setExpandedSlideIndex] = useState<number | null>(0)
+    const [expandedSectionIndex, setExpandedSectionIndex] = useState<number | null>(0)
+
+    // Local copy of items for homepage ordering and visibility toggling
+    const [localProducts, setLocalProducts] = useState<Product[]>([])
+    const [localFeaturedIds, setLocalFeaturedIds] = useState<string[]>([])
+    const [localKurumlar, setLocalKurumlar] = useState<Kurum[]>([])
+    const [localAltKategoriler, setLocalAltKategoriler] = useState<AltKategori[]>([])
 
     // Form state
     const [pageForm, setPageForm] = useState({
@@ -300,6 +314,9 @@ export default function PageCMSModal({ isOpen, onClose, editingPage, triggerToas
         announcementImage: '',
         slides: [] as any[],
         ctaPanels: [] as any[],
+        activeSections: {} as Record<string, boolean>,
+        featuredSubcatOrders: [] as string[],
+        sectionOrder: [] as string[],
         seoTitle: '',
         seoDescription: '',
         status: 'published' as 'published' | 'draft'
@@ -329,15 +346,133 @@ export default function PageCMSModal({ isOpen, onClose, editingPage, triggerToas
                 announcementImage: editingPage.announcementImage || '',
                 slides: editingPage.slides ? [...editingPage.slides] : [],
                 ctaPanels: editingPage.ctaPanels ? [...editingPage.ctaPanels] : [],
+                activeSections: (editingPage as any).activeSections || {
+                    slider: true,
+                    ctaPanels: true,
+                    featured: true,
+                    subcategories: true,
+                    kurumlar: true,
+                    about: true
+                },
+                featuredSubcatOrders: editingPage.featuredSubcatOrders || [],
+                sectionOrder: (editingPage as any).sectionOrder || ['slider', 'featured', 'subcategories', 'yapboz', 'about', 'kurumlar'],
                 seoTitle: editingPage.seoTitle || '',
                 seoDescription: editingPage.seoDescription || '',
                 status: editingPage.status || 'published'
             })
+            
+            // Load and sort local items
+            const sortedProds = [...(products || [])].sort((a, b) => {
+                const isAFeatured = (featuredIds || []).includes(a.id)
+                const isBFeatured = (featuredIds || []).includes(b.id)
+                if (isAFeatured && isBFeatured) {
+                    return (a.order ?? 9999) - (b.order ?? 9999)
+                }
+                if (isAFeatured) return -1
+                if (isBFeatured) return 1
+                return (a.order ?? 9999) - (b.order ?? 9999)
+            })
+            setLocalProducts(sortedProds)
+            setLocalFeaturedIds([...(featuredIds || [])])
+
+            const sortedKurums = [...(kurumlar || [])].sort((a, b) => (a.order ?? 999) - (b.order ?? 999))
+            setLocalKurumlar(sortedKurums)
+
+            const subcatOrders = editingPage.featuredSubcatOrders || []
+            const sortedSubcats = [...(altKategoriler || [])].sort((a, b) => {
+                const idxA = subcatOrders.indexOf(a.id)
+                const idxB = subcatOrders.indexOf(b.id)
+                const isAFeatured = idxA > -1 && a.showOnHomepage
+                const isBFeatured = idxB > -1 && b.showOnHomepage
+                if (isAFeatured && isBFeatured) return idxA - idxB
+                if (isAFeatured) return -1
+                if (isBFeatured) return 1
+                return (a.order ?? 9999) - (b.order ?? 9999)
+            })
+            setLocalAltKategoriler(sortedSubcats)
+
             setActiveModalTab('content')
             setActiveHomeTab('announcement')
             setActivePreviewSlideIndex(0)
         }
     }, [editingPage, isOpen])
+
+    const handleToggleLocalProductFeatured = (productId: string) => {
+        setLocalFeaturedIds(prev => {
+            const isFeatured = prev.includes(productId)
+            let nextIds: string[]
+            if (isFeatured) {
+                nextIds = prev.filter(id => id !== productId)
+            } else {
+                nextIds = [...prev, productId]
+            }
+            // Sort products so checked are at the top and maintain order
+            setLocalProducts(prevProds => {
+                const checked = prevProds.filter(p => nextIds.includes(p.id))
+                const unchecked = prevProds.filter(p => !nextIds.includes(p.id))
+                return [...checked, ...unchecked]
+            })
+            return nextIds
+        })
+    }
+
+    const handleMoveLocalProduct = (index: number, direction: 'up' | 'down') => {
+        const nextIndex = direction === 'up' ? index - 1 : index + 1
+        if (nextIndex < 0 || nextIndex >= localProducts.length) return
+        
+        const newProducts = [...localProducts]
+        const temp = newProducts[index]
+        newProducts[index] = newProducts[nextIndex]
+        newProducts[nextIndex] = temp
+        setLocalProducts(newProducts)
+    }
+
+    const handleToggleLocalKurumHomepage = (kurumId: string) => {
+        setLocalKurumlar(prev => 
+            prev.map(k => k.id === kurumId ? { ...k, showOnHomepage: k.showOnHomepage === false ? true : false } : k)
+        )
+    }
+
+    const handleMoveLocalKurum = (index: number, direction: 'up' | 'down') => {
+        const nextIndex = direction === 'up' ? index - 1 : index + 1
+        if (nextIndex < 0 || nextIndex >= localKurumlar.length) return
+        
+        const newKurums = [...localKurumlar]
+        const temp = newKurums[index]
+        newKurums[index] = newKurums[nextIndex]
+        newKurums[nextIndex] = temp
+        setLocalKurumlar(newKurums)
+    }
+
+    const handleToggleLocalAltKategoriHomepage = (catId: string) => {
+        setLocalAltKategoriler(prev => {
+            const updated = prev.map(c => c.id === catId ? { ...c, showOnHomepage: !c.showOnHomepage } : c)
+            const checked = updated.filter(c => c.showOnHomepage)
+            const unchecked = updated.filter(c => !c.showOnHomepage)
+            const sorted = [...checked, ...unchecked]
+            
+            // Sync pageForm.featuredSubcatOrders
+            const activeIds = sorted.filter(c => c.showOnHomepage).map(c => c.id)
+            setPageForm(f => ({ ...f, featuredSubcatOrders: activeIds }))
+            
+            return sorted
+        })
+    }
+
+    const handleMoveLocalAltKategori = (index: number, direction: 'up' | 'down') => {
+        const nextIndex = direction === 'up' ? index - 1 : index + 1
+        if (nextIndex < 0 || nextIndex >= localAltKategoriler.length) return
+        
+        const newCats = [...localAltKategoriler]
+        const temp = newCats[index]
+        newCats[index] = newCats[nextIndex]
+        newCats[nextIndex] = temp
+        setLocalAltKategoriler(newCats)
+        
+        // Sync pageForm.featuredSubcatOrders
+        const activeIds = newCats.filter(c => c.showOnHomepage).map(c => c.id)
+        setPageForm(f => ({ ...f, featuredSubcatOrders: activeIds }))
+    }
 
     if (!isOpen || !editingPage) return null
 
@@ -560,9 +695,31 @@ export default function PageCMSModal({ isOpen, onClose, editingPage, triggerToas
         })
     }
 
-    // WYSIWYG Tag Injector
-    const insertHtmlTag = (tagOpen: string, tagClose: string = '') => {
-        const textarea = document.getElementById('page-content-textarea') as HTMLTextAreaElement
+    // WYSIWYG Tag Injector (Overloaded to handle multiple textareas and back-compatibility)
+    const insertHtmlTag = (
+        arg1: string,
+        arg2: string = '',
+        arg3: string = '',
+        arg4: string = ''
+    ) => {
+        let elementId = 'page-content-textarea'
+        let fieldName = 'content'
+        let tagOpen = arg1
+        let tagClose = arg2
+
+        if (arg3 !== '') {
+            elementId = arg1
+            fieldName = arg2
+            tagOpen = arg3
+            tagClose = arg4
+        } else if (arg1 && arg2 && !arg1.startsWith('<') && !arg1.startsWith('&')) {
+            elementId = arg1
+            fieldName = arg2
+            tagOpen = arg3 || arg2
+            tagClose = ''
+        }
+
+        const textarea = document.getElementById(elementId) as HTMLTextAreaElement
         if (!textarea) return
         
         const start = textarea.selectionStart
@@ -572,12 +729,157 @@ export default function PageCMSModal({ isOpen, onClose, editingPage, triggerToas
         const replacement = tagOpen + selectedText + tagClose
         
         const newContent = text.substring(0, start) + replacement + text.substring(end)
-        setPageForm(prev => ({ ...prev, content: newContent }))
+        
+        setPageForm(prev => {
+            if (fieldName.startsWith('customSections[')) {
+                const match = fieldName.match(/customSections\[(\d+)\]\.(.+)/)
+                if (match) {
+                    const index = parseInt(match[1])
+                    const subField = match[2]
+                    const list = [...(prev.customSections || [])]
+                    list[index] = { ...list[index], [subField]: newContent }
+                    return { ...prev, customSections: list }
+                }
+            }
+            if (fieldName.startsWith('faqs[')) {
+                const match = fieldName.match(/faqs\[(\d+)\]\.(.+)/)
+                if (match) {
+                    const index = parseInt(match[1])
+                    const subField = match[2]
+                    const list = [...(prev.faqs || [])]
+                    list[index] = { ...list[index], [subField]: newContent }
+                    return { ...prev, faqs: list }
+                }
+            }
+            return { ...prev, [fieldName]: newContent }
+        })
         
         setTimeout(() => {
             textarea.focus()
             textarea.setSelectionRange(start + tagOpen.length, start + tagOpen.length + selectedText.length)
         }, 50)
+    }
+
+    const renderToolbar = (elementId: string, fieldName: string) => {
+        return (
+            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '6px', background: '#f8fafc', padding: '6px', borderRadius: '8px', border: '1px solid #e2e8f0', justifyContent: 'flex-start' }}>
+                <button type="button" onClick={() => insertHtmlTag(elementId, fieldName, '<strong>', '</strong>')} style={{ padding: '4px 8px', fontSize: '11px', background: 'white', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center' }} title="Kalın">
+                    <Bold size={11} />
+                </button>
+                <button type="button" onClick={() => insertHtmlTag(elementId, fieldName, '<em>', '</em>')} style={{ padding: '4px 8px', fontSize: '11px', background: 'white', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center' }} title="İtalik">
+                    <Italic size={11} />
+                </button>
+                <button type="button" onClick={() => insertHtmlTag(elementId, fieldName, '<u>', '</u>')} style={{ padding: '4px 8px', fontSize: '11px', background: 'white', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center' }} title="Altı Çizili">
+                    <Underline size={11} />
+                </button>
+                <button type="button" onClick={() => insertHtmlTag(elementId, fieldName, '<ul>\n  <li>', '</li>\n</ul>')} style={{ padding: '4px 8px', fontSize: '11px', background: 'white', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center' }} title="Sırasız Liste">
+                    <List size={11} />
+                </button>
+                <button type="button" onClick={() => insertHtmlTag(elementId, fieldName, '<ol>\n  <li>', '</li>\n</ol>')} style={{ padding: '4px 8px', fontSize: '11px', background: 'white', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center' }} title="Sıralı Liste">
+                    <ListOrdered size={11} />
+                </button>
+                <button type="button" onClick={() => insertHtmlTag(elementId, fieldName, '<a href="#" target="_blank">', '</a>')} style={{ padding: '4px 8px', fontSize: '11px', background: 'white', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center' }} title="Bağlantı Ekle">
+                    <LinkIcon size={11} />
+                </button>
+                <button type="button" onClick={() => insertHtmlTag(elementId, fieldName, '<blockquote>', '</blockquote>')} style={{ padding: '4px 8px', fontSize: '11px', background: 'white', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center' }} title="Alıntı">
+                    <Quote size={11} />
+                </button>
+                <button type="button" onClick={() => insertHtmlTag(elementId, fieldName, '<br />')} style={{ padding: '4px 8px', fontSize: '11px', background: 'white', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer' }} title="Satır Atla">
+                    ↵ Boşluk
+                </button>
+            </div>
+        )
+    }
+
+    const renderSwitchToggle = (label: string, checked: boolean, onChange: (val: boolean) => void) => {
+        return (
+            <label style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'space-between',
+                gap: '8px', 
+                padding: '10px 14px', 
+                background: 'white', 
+                borderRadius: '10px', 
+                border: '1px solid #e2e8f0', 
+                cursor: 'pointer', 
+                fontSize: '11px', 
+                fontWeight: '700', 
+                color: '#1e293b',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+                transition: 'all 0.15s ease',
+                userSelect: 'none'
+            }}
+            onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = '#cbd5e1'
+                e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.04)'
+            }}
+            onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = '#e2e8f0'
+                e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.02)'
+            }}
+            >
+                <span>{label}</span>
+                <div style={{
+                    position: 'relative',
+                    width: '34px',
+                    height: '20px',
+                    backgroundColor: checked ? '#10b981' : '#cbd5e1',
+                    borderRadius: '10px',
+                    transition: 'background-color 0.2s ease',
+                    flexShrink: 0
+                }}>
+                    <div style={{
+                        position: 'absolute',
+                        top: '2px',
+                        left: checked ? '16px' : '2px',
+                        width: '16px',
+                        height: '16px',
+                        borderRadius: '50%',
+                        backgroundColor: 'white',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+                        transition: 'left 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                    }} />
+                </div>
+                <input 
+                    type="checkbox" 
+                    checked={checked}
+                    onChange={(e) => onChange(e.target.checked)}
+                    style={{ display: 'none' }}
+                />
+            </label>
+        )
+    }
+
+    const handleActiveSectionToggle = (key: string, value: boolean) => {
+        setPageForm(prev => ({
+            ...prev,
+            activeSections: {
+                ...(prev.activeSections || {
+                    slider: true,
+                    ctaPanels: true,
+                    featured: true,
+                    subcategories: true,
+                    kurumlar: true,
+                    about: true
+                }),
+                [key]: value
+            }
+        }))
+    }
+
+    const handleMoveFeaturedSubcat = (index: number, direction: 'up' | 'down') => {
+        setPageForm(prev => {
+            const list = [...(prev.featuredSubcatOrders || [])]
+            const targetIndex = direction === 'up' ? index - 1 : index + 1
+            if (targetIndex < 0 || targetIndex >= list.length) return prev
+            
+            const temp = list[index]
+            list[index] = list[targetIndex]
+            list[targetIndex] = temp
+            
+            return { ...prev, featuredSubcatOrders: list }
+        })
     }
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -626,6 +928,40 @@ export default function PageCMSModal({ isOpen, onClose, editingPage, triggerToas
             pageData.slides = pageForm.slides?.map(s => ({ ...s, title: s.title?.trim() || '', subtitle: s.subtitle?.trim() || '' })) || []
             pageData.ctaPanels = pageForm.ctaPanels
             pageData.customSections = pageForm.customSections
+            pageData.activeSections = pageForm.activeSections
+            pageData.featuredSubcatOrders = pageForm.featuredSubcatOrders
+            pageData.sectionOrder = pageForm.sectionOrder
+
+            // 1. Save featured products ordering and homepage visibility
+            const sortedFeaturedProducts = localProducts.filter(p => localFeaturedIds.includes(p.id))
+            const productUpdates = localProducts.map(p => {
+                const isFeatured = localFeaturedIds.includes(p.id)
+                const featIndex = sortedFeaturedProducts.findIndex(fp => fp.id === p.id)
+                const orderVal = isFeatured ? featIndex + 1 : 9999
+                return {
+                    id: p.id,
+                    fields: {
+                        showOnHomepage: isFeatured,
+                        order: orderVal
+                    }
+                }
+            })
+            updateMultipleProducts(productUpdates)
+            updateFeaturedIds(localFeaturedIds)
+
+            // 2. Save institutions ordering and homepage visibility
+            const updatedKurumList = localKurumlar.map((k, idx) => ({
+                ...k,
+                order: idx + 1
+            }))
+            reorderKurumlar(updatedKurumList)
+
+            // 3. Save subcategories ordering and homepage visibility
+            const updatedAltKategoriList = localAltKategoriler.map((c, idx) => ({
+                ...c,
+                order: idx + 1
+            }))
+            reorderAltKategoriler(updatedAltKategoriList)
         } else if (editingPage.id === 'about') {
             pageData.aboutText = pageForm.aboutText?.trim() || ''
             pageData.aboutVision = pageForm.aboutVision?.trim() || ''
@@ -922,10 +1258,23 @@ export default function PageCMSModal({ isOpen, onClose, editingPage, triggerToas
                                                     <div className={styles.faqList}>
                                                         {pageForm.slides && pageForm.slides.map((slide, idx) => (
                                                             <div key={slide.id || idx} className={styles.faqItemRow} style={{ border: '1px solid #cbd5e1', background: '#f8fafc', padding: '16px' }}>
-                                                                <div className={styles.faqItemHeader}>
-                                                                    <span className={styles.faqItemTitle} style={{ color: '#2563eb', fontWeight: '800' }}>
-                                                                        Slayt #{idx + 1}: {slide.title ? slide.title.replace(/<[^>]*>?/gm, '') : 'Başlıksız Slayt'}
-                                                                    </span>
+                                                                <div 
+                                                                    className={styles.faqItemHeader}
+                                                                    onClick={(e) => {
+                                                                        const target = e.target as HTMLElement
+                                                                        if (target.closest('button')) return
+                                                                        setExpandedSlideIndex(expandedSlideIndex === idx ? null : idx)
+                                                                    }}
+                                                                    style={{ cursor: 'pointer', userSelect: 'none' }}
+                                                                >
+                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                                        <span style={{ fontSize: '11px', color: '#64748b' }}>
+                                                                            {expandedSlideIndex === idx ? '▼' : '▶'}
+                                                                        </span>
+                                                                        <span className={styles.faqItemTitle} style={{ color: '#2563eb', fontWeight: '800' }}>
+                                                                            Slayt #{idx + 1}: {slide.title ? slide.title.replace(/<[^>]*>?/gm, '') : 'Başlıksız Slayt'}
+                                                                        </span>
+                                                                    </div>
                                                                     
                                                                     <div style={{ display: 'flex', gap: '4px' }}>
                                                                         <button
@@ -956,7 +1305,8 @@ export default function PageCMSModal({ isOpen, onClose, editingPage, triggerToas
                                                                     </div>
                                                                 </div>
                                                                 
-                                                                <div className={styles.adminForm} style={{ marginTop: '12px', border: 'none', padding: 0 }}>
+                                                                {expandedSlideIndex === idx && (
+                                                                    <div className={styles.adminForm} style={{ marginTop: '12px', border: 'none', padding: 0 }}>
                                                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                                                                         <RichTextEditor 
                                                                             id={`slide-title-${idx}`}
@@ -1180,8 +1530,9 @@ export default function PageCMSModal({ isOpen, onClose, editingPage, triggerToas
                                                                         </div>
                                                                     </div>
                                                                 </div>
-                                                            </div>
-                                                        ))}
+                                                            )}
+                                                        </div>
+                                                        ))}`
                                                     </div>
 
                                                     <button 
@@ -1271,16 +1622,381 @@ export default function PageCMSModal({ isOpen, onClose, editingPage, triggerToas
                                             {/* SEKME 4: MODÜLER BÖLÜMLER (YAPBOZ CARDS) */}
                                             {activeHomeTab === 'yapboz' && (
                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                                    {/* Homepage Sections Vertical Ordering Manager */}
+                                                    <div style={{ background: '#f8fafc', padding: '18px 20px', borderRadius: '12px', border: '2px solid #6366f1', boxShadow: '4px 4px 0px 0px #6366f1', marginBottom: '8px' }}>
+                                                        <h4 style={{ fontSize: '13px', fontWeight: '800', color: '#1e293b', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                                                            <span>⇅ Ana Sayfa Bölüm Yerleşimi / Sıralaması</span>
+                                                        </h4>
+                                                        <p style={{ fontSize: '11px', color: '#64748b', marginBottom: '12px' }}>
+                                                            Sitedeki bölümlerin yukarıdan aşağıya doğru hangi sıra ile gösterileceğini butonları kullanarak değiştirebilirsiniz.
+                                                        </p>
+                                                        
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                            {(pageForm.sectionOrder || ['slider', 'featured', 'subcategories', 'yapboz', 'about', 'kurumlar']).map((secKey, idx, arr) => {
+                                                                const friendlyNames: Record<string, string> = {
+                                                                    slider: '📢 Giriş Slaytları (Slider) & Yan Kartlar',
+                                                                    featured: '📚 Öne Çıkan Eğitimler (Ana Sayfa Vitrini)',
+                                                                    subcategories: '⚡ Popüler Sınav Grupları (Sınav Hazırlık)',
+                                                                    yapboz: '🧩 Dinamik Ekstra Yapboz Bölümleri',
+                                                                    about: 'ℹ️ Hakkımızda Kutusu',
+                                                                    kurumlar: '🏢 Kurumlar / Bakanlıklar Listesi'
+                                                                }
+                                                                
+                                                                const handleMoveSection = (direction: 'up' | 'down') => {
+                                                                    const targetIndex = direction === 'up' ? idx - 1 : idx + 1
+                                                                    if (targetIndex < 0 || targetIndex >= arr.length) return
+                                                                    const nextOrder = [...arr]
+                                                                    const temp = nextOrder[idx]
+                                                                    nextOrder[idx] = nextOrder[targetIndex]
+                                                                    nextOrder[targetIndex] = temp
+                                                                    setPageForm(prev => ({
+                                                                        ...prev,
+                                                                        sectionOrder: nextOrder
+                                                                    }))
+                                                                }
+                                                                
+                                                                return (
+                                                                    <div 
+                                                                        key={secKey} 
+                                                                        style={{ 
+                                                                            display: 'flex', 
+                                                                            justifyContent: 'space-between', 
+                                                                            alignItems: 'center', 
+                                                                            padding: '10px 14px', 
+                                                                            background: 'white', 
+                                                                            borderRadius: '8px', 
+                                                                            border: '1.5px solid #e2e8f0', 
+                                                                            boxShadow: '0 1px 2px rgba(0,0,0,0.02)' 
+                                                                        }}
+                                                                    >
+                                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                                            <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#1e293b' }}>
+                                                                                {friendlyNames[secKey] || secKey}
+                                                                            </span>
+                                                                        </div>
+                                                                        
+                                                                        <div style={{ display: 'flex', gap: '4px' }}>
+                                                                            <button 
+                                                                                type="button" 
+                                                                                onClick={() => handleMoveSection('up')}
+                                                                                disabled={idx === 0}
+                                                                                style={{ padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1', background: idx === 0 ? '#f1f5f9' : 'white', cursor: idx === 0 ? 'not-allowed' : 'pointer', color: '#475569' }}
+                                                                            >
+                                                                                <ArrowUp size={12} />
+                                                                            </button>
+                                                                            <button 
+                                                                                type="button" 
+                                                                                onClick={() => handleMoveSection('down')}
+                                                                                disabled={idx === arr.length - 1}
+                                                                                style={{ padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1', background: idx === arr.length - 1 ? '#f1f5f9' : 'white', cursor: idx === arr.length - 1 ? 'not-allowed' : 'pointer', color: '#475569' }}
+                                                                            >
+                                                                                <ArrowDown size={12} />
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                )
+                                                            })}
+                                                        </div>
+                                                    </div>
+
+                                                    <div style={{ background: '#f1f5f9', padding: '16px', borderRadius: '12px', border: '1px solid #cbd5e1', marginBottom: '8px' }}>
+                                                        <h4 style={{ fontSize: '12px', fontWeight: '800', color: '#334155', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px', textTransform: 'uppercase' }}>
+                                                            ⚙️ Ana Sayfa Bölüm Görünürlük Ayarları
+                                                        </h4>
+                                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '12px' }}>
+                                                            {renderSwitchToggle(
+                                                                'Giriş Slaytları (Slider)', 
+                                                                pageForm.activeSections?.slider !== false,
+                                                                (val) => handleActiveSectionToggle('slider', val)
+                                                            )}
+                                                            {renderSwitchToggle(
+                                                                'Giriş Yan Kartları', 
+                                                                pageForm.activeSections?.ctaPanels !== false,
+                                                                (val) => handleActiveSectionToggle('ctaPanels', val)
+                                                            )}
+                                                            {renderSwitchToggle(
+                                                                'Öne Çıkan Eğitimler', 
+                                                                pageForm.activeSections?.featured !== false,
+                                                                (val) => handleActiveSectionToggle('featured', val)
+                                                            )}
+                                                            {renderSwitchToggle(
+                                                                'Popüler Sınav Grupları', 
+                                                                pageForm.activeSections?.subcategories !== false,
+                                                                (val) => handleActiveSectionToggle('subcategories', val)
+                                                            )}
+                                                            {renderSwitchToggle(
+                                                                'Kurumlar / Bakanlıklar', 
+                                                                pageForm.activeSections?.kurumlar !== false,
+                                                                (val) => handleActiveSectionToggle('kurumlar', val)
+                                                            )}
+                                                            {renderSwitchToggle(
+                                                                'Hakkımızda Kutusu', 
+                                                                pageForm.activeSections?.about !== false,
+                                                                (val) => handleActiveSectionToggle('about', val)
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* 1. ÖNE ÇIKAN EĞİTİMLER PANELİ */}
+                                                    {pageForm.activeSections?.featured !== false && (
+                                                        <div style={{ background: '#f8fafc', padding: '18px 20px', borderRadius: '12px', border: '1px solid #cbd5e1', marginBottom: '16px' }}>
+                                                            <h4 style={{ fontSize: '13px', fontWeight: '800', color: '#1e293b', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                                                                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', background: '#3b82f6', color: 'white', borderRadius: '6px', fontSize: '11px' }}>1</span>
+                                                                <span>Öne Çıkan Eğitimler Yönetimi & Sıralaması</span>
+                                                            </h4>
+                                                            <p style={{ fontSize: '11px', color: '#64748b', marginBottom: '12px', marginLeft: '30px' }}>
+                                                                Ana sayfadaki vitrin kaydırıcısında (slider) gösterilecek eğitimleri seçin ve sıralayın. (Tasarım için 3'ün katı; örn. 3, 6, 9 adet eklemeniz önerilir)
+                                                            </p>
+                                                            
+                                                            <div style={{ marginLeft: '30px', display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '250px', overflowY: 'auto', paddingRight: '4px' }}>
+                                                                {localProducts.filter(p => p.status !== 'passive').map((product, idx) => {
+                                                                    const isFeatured = localFeaturedIds.includes(product.id)
+                                                                    const featuredIndex = localProducts.filter(p => localFeaturedIds.includes(p.id)).findIndex(p => p.id === product.id)
+                                                                    
+                                                                    return (
+                                                                        <div 
+                                                                            key={product.id} 
+                                                                            style={{ 
+                                                                                display: 'flex', 
+                                                                                justifyContent: 'space-between', 
+                                                                                alignItems: 'center', 
+                                                                                padding: '10px 14px', 
+                                                                                background: isFeatured ? '#f0f9ff' : 'white', 
+                                                                                borderRadius: '8px', 
+                                                                                border: isFeatured ? '1.5px solid #0284c7' : '1px solid #e2e8f0', 
+                                                                                boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+                                                                                transition: 'all 0.15s ease'
+                                                                            }}
+                                                                        >
+                                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                                                <input 
+                                                                                    type="checkbox"
+                                                                                    checked={isFeatured}
+                                                                                    onChange={() => handleToggleLocalProductFeatured(product.id)}
+                                                                                    style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                                                                                />
+                                                                                {(() => {
+                                                                                    const prodKurum = kurumlar.find(k => k.slug === product.kurumSlug || product.kurumSlugs?.includes(k.slug))
+                                                                                    return (
+                                                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                                                                            <span style={{ fontSize: '12px', fontWeight: '800', color: '#0f172a' }}>
+                                                                                                {product.name}
+                                                                                            </span>
+                                                                                            <span style={{ fontSize: '9px', fontWeight: '700', color: '#64748b' }}>
+                                                                                                🏛️ {prodKurum ? prodKurum.name : 'Kurum Yok'}
+                                                                                            </span>
+                                                                                        </div>
+                                                                                    )
+                                                                                })()}
+                                                                            </div>
+                                                                            
+                                                                            {isFeatured && (
+                                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                                                    <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#0369a1', background: '#e0f2fe', padding: '3px 7px', borderRadius: '4px' }}>
+                                                                                        Sıra: {featuredIndex + 1}
+                                                                                    </span>
+                                                                                    <button 
+                                                                                        type="button" 
+                                                                                        onClick={() => handleMoveLocalProduct(idx, 'up')}
+                                                                                        disabled={featuredIndex === 0}
+                                                                                        style={{ padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1', background: featuredIndex === 0 ? '#f1f5f9' : 'white', cursor: featuredIndex === 0 ? 'not-allowed' : 'pointer', color: '#475569' }}
+                                                                                    >
+                                                                                        <ArrowUp size={12} />
+                                                                                    </button>
+                                                                                    <button 
+                                                                                        type="button" 
+                                                                                        onClick={() => handleMoveLocalProduct(idx, 'down')}
+                                                                                        disabled={featuredIndex === localFeaturedIds.length - 1}
+                                                                                        style={{ padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1', background: featuredIndex === localFeaturedIds.length - 1 ? '#f1f5f9' : 'white', cursor: featuredIndex === localFeaturedIds.length - 1 ? 'not-allowed' : 'pointer', color: '#475569' }}
+                                                                                    >
+                                                                                        <ArrowDown size={12} />
+                                                                                    </button>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    )
+                                                                })}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* 2. POPÜLER SINAV GRUPLARI PANELİ */}
+                                                    {pageForm.activeSections?.subcategories !== false && (
+                                                        <div style={{ background: '#f8fafc', padding: '18px 20px', borderRadius: '12px', border: '1px solid #cbd5e1', marginBottom: '16px' }}>
+                                                            <h4 style={{ fontSize: '13px', fontWeight: '800', color: '#1e293b', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                                                                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', background: '#ca8a04', color: 'white', borderRadius: '6px', fontSize: '11px' }}>2</span>
+                                                                <span>Popüler Sınav Grupları Yönetimi & Sıralaması</span>
+                                                            </h4>
+                                                            <p style={{ fontSize: '11px', color: '#64748b', marginBottom: '12px', marginLeft: '30px' }}>
+                                                                Ana sayfadaki Popüler Sınav Grupları bölümünde gösterilecek kategorileri seçin ve sıralayın. (Tasarım için çift sayıda; örn. 4, 6, 8 adet eklemeniz önerilir)
+                                                            </p>
+                                                            
+                                                            <div style={{ marginLeft: '30px', display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '250px', overflowY: 'auto', paddingRight: '4px' }}>
+                                                                {localAltKategoriler.filter(c => c.status !== 'passive').map((cat, idx) => {
+                                                                    const isHomepage = cat.showOnHomepage === true
+                                                                    const activeIndex = localAltKategoriler.filter(c => c.showOnHomepage).findIndex(c => c.id === cat.id)
+                                                                    const parentSlug = cat.kurumSlugs?.[0]
+                                                                    const parentKurum = kurumlar.find(k => k.slug === parentSlug)
+                                                                    
+                                                                    return (
+                                                                        <div 
+                                                                            key={cat.id} 
+                                                                            style={{ 
+                                                                                display: 'flex', 
+                                                                                justifyContent: 'space-between', 
+                                                                                alignItems: 'center', 
+                                                                                padding: '10px 14px', 
+                                                                                background: isHomepage ? '#fef8ec' : 'white', 
+                                                                                borderRadius: '8px', 
+                                                                                border: isHomepage ? '1.5px solid #d97706' : '1px solid #e2e8f0', 
+                                                                                boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+                                                                                transition: 'all 0.15s ease'
+                                                                            }}
+                                                                        >
+                                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                                                <input 
+                                                                                    type="checkbox"
+                                                                                    checked={isHomepage}
+                                                                                    onChange={() => handleToggleLocalAltKategoriHomepage(cat.id)}
+                                                                                    style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                                                                                />
+                                                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                                                                    <span style={{ fontSize: '12px', fontWeight: '800', color: '#0f172a' }}>
+                                                                                        {cat.name}
+                                                                                    </span>
+                                                                                    {parentKurum && (
+                                                                                        <span style={{ fontSize: '9px', fontWeight: '700', color: parentKurum.color || '#6366f1', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                                                                                            🏛️ {parentKurum.name}
+                                                                                        </span>
+                                                                                    )}
+                                                                                </div>
+                                                                            </div>
+                                                                            
+                                                                            {isHomepage && (
+                                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                                                    <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#a16207', background: '#fef3c7', padding: '3px 7px', borderRadius: '4px' }}>
+                                                                                        Sıra: {activeIndex + 1}
+                                                                                    </span>
+                                                                                    <button 
+                                                                                        type="button" 
+                                                                                        onClick={() => handleMoveLocalAltKategori(idx, 'up')}
+                                                                                        disabled={activeIndex === 0}
+                                                                                        style={{ padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1', background: activeIndex === 0 ? '#f1f5f9' : 'white', cursor: activeIndex === 0 ? 'not-allowed' : 'pointer', color: '#475569' }}
+                                                                                    >
+                                                                                        <ArrowUp size={12} />
+                                                                                    </button>
+                                                                                    <button 
+                                                                                        type="button" 
+                                                                                        onClick={() => handleMoveLocalAltKategori(idx, 'down')}
+                                                                                        disabled={activeIndex === localAltKategoriler.filter(c => c.showOnHomepage).length - 1}
+                                                                                        style={{ padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1', background: activeIndex === localAltKategoriler.filter(c => c.showOnHomepage).length - 1 ? '#f1f5f9' : 'white', cursor: activeIndex === localAltKategoriler.filter(c => c.showOnHomepage).length - 1 ? 'not-allowed' : 'pointer', color: '#475569' }}
+                                                                                    >
+                                                                                        <ArrowDown size={12} />
+                                                                                    </button>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    )
+                                                                })}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* 3. KURUMLAR / BAKANLIKLAR PANELİ */}
+                                                    {pageForm.activeSections?.kurumlar !== false && (
+                                                        <div style={{ background: '#f8fafc', padding: '18px 20px', borderRadius: '12px', border: '1px solid #cbd5e1', marginBottom: '16px' }}>
+                                                            <h4 style={{ fontSize: '13px', fontWeight: '800', color: '#1e293b', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                                                                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', background: '#10b981', color: 'white', borderRadius: '6px', fontSize: '11px' }}>3</span>
+                                                                <span>Kurumlar / Bakanlıklar Yönetimi & Sıralaması</span>
+                                                            </h4>
+                                                            <p style={{ fontSize: '11px', color: '#64748b', marginBottom: '12px', marginLeft: '30px' }}>
+                                                                Ana sayfadaki Kurumlar/Bakanlıklar bölümünde listelenecek kurumları seçin ve sıralayın.
+                                                            </p>
+                                                            
+                                                            <div style={{ marginLeft: '30px', display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '250px', overflowY: 'auto', paddingRight: '4px' }}>
+                                                                {localKurumlar.filter(k => k.status !== 'passive').map((kurum, idx) => {
+                                                                    const isHomepage = kurum.showOnHomepage !== false
+                                                                    
+                                                                    return (
+                                                                        <div 
+                                                                            key={kurum.id} 
+                                                                            style={{ 
+                                                                                display: 'flex', 
+                                                                                justifyContent: 'space-between', 
+                                                                                alignItems: 'center', 
+                                                                                padding: '10px 14px', 
+                                                                                background: isHomepage ? '#f0fdf4' : 'white', 
+                                                                                borderRadius: '8px', 
+                                                                                border: isHomepage ? '1.5px solid #10b981' : '1px solid #e2e8f0', 
+                                                                                boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+                                                                                transition: 'all 0.15s ease'
+                                                                            }}
+                                                                        >
+                                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                                                <input 
+                                                                                    type="checkbox"
+                                                                                    checked={isHomepage}
+                                                                                    onChange={() => handleToggleLocalKurumHomepage(kurum.id)}
+                                                                                    style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                                                                                />
+                                                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                                                                    <span style={{ fontSize: '12px', fontWeight: '800', color: '#0f172a' }}>
+                                                                                        {kurum.name}
+                                                                                    </span>
+                                                                                    <span style={{ fontSize: '9px', fontWeight: '700', color: kurum.color || '#6366f1' }}>
+                                                                                        🔑 {kurum.slug}
+                                                                                    </span>
+                                                                                </div>
+                                                                            </div>
+                                                                            
+                                                                            <div style={{ display: 'flex', gap: '4px' }}>
+                                                                                <button 
+                                                                                    type="button" 
+                                                                                    onClick={() => handleMoveLocalKurum(idx, 'up')}
+                                                                                    disabled={idx === 0}
+                                                                                    style={{ padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1', background: idx === 0 ? '#f1f5f9' : 'white', cursor: idx === 0 ? 'not-allowed' : 'pointer', color: '#475569' }}
+                                                                                >
+                                                                                    <ArrowUp size={12} />
+                                                                                </button>
+                                                                                <button 
+                                                                                    type="button" 
+                                                                                    onClick={() => handleMoveLocalKurum(idx, 'down')}
+                                                                                    disabled={idx === localKurumlar.filter(k => k.status !== 'passive').length - 1}
+                                                                                    style={{ padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1', background: idx === localKurumlar.filter(k => k.status !== 'passive').length - 1 ? '#f1f5f9' : 'white', cursor: idx === localKurumlar.filter(k => k.status !== 'passive').length - 1 ? 'not-allowed' : 'pointer', color: '#475569' }}
+                                                                                >
+                                                                                    <ArrowDown size={12} />
+                                                                                </button>
+                                                                            </div>
+                                                                        </div>
+                                                                    )
+                                                                })}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
                                                     <h3 style={{ fontSize: '13px', fontWeight: 'bold', color: '#1e293b', textTransform: 'uppercase' }}>Dinamik Yapboz Bölümleri ({pageForm.customSections ? pageForm.customSections.length : 0})</h3>
                                                     <p style={{ fontSize: '12px', color: '#64748b', marginTop: '-8px' }}>Ana sayfanın alt tarafına yerleştirebileceğiniz kart listeleri, iki sütunlu tanıtımlar ve tam ekran duyuru bantları.</p>
                                                     
                                                     <div className={styles.faqList}>
                                                         {pageForm.customSections && pageForm.customSections.map((section, sIdx) => (
                                                             <div key={section.id || sIdx} className={styles.faqItemRow} style={{ border: '1px solid #cbd5e1', background: '#f8fafc', padding: '16px' }}>
-                                                                <div className={styles.faqItemHeader}>
-                                                                    <span className={styles.faqItemTitle} style={{ color: '#059669', fontWeight: '800' }}>
-                                                                        Bölüm #{sIdx + 1}: {section.title || 'Başlıksız Yapboz Bölümü'}
-                                                                    </span>
+                                                                <div 
+                                                                    className={styles.faqItemHeader}
+                                                                    onClick={(e) => {
+                                                                        const target = e.target as HTMLElement
+                                                                        if (target.closest('button')) return
+                                                                        setExpandedSectionIndex(expandedSectionIndex === sIdx ? null : sIdx)
+                                                                    }}
+                                                                    style={{ cursor: 'pointer', userSelect: 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                                                                >
+                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                                        <span style={{ fontSize: '11px', color: '#64748b' }}>
+                                                                            {expandedSectionIndex === sIdx ? '▼' : '▶'}
+                                                                        </span>
+                                                                        <span className={styles.faqItemTitle} style={{ color: '#059669', fontWeight: '800' }}>
+                                                                            Bölüm #{sIdx + 1}: {section.title || 'Başlıksız Yapboz Bölümü'}
+                                                                        </span>
+                                                                    </div>
                                                                     
                                                                     <div style={{ display: 'flex', gap: '4px' }}>
                                                                         <button 
@@ -1311,12 +2027,13 @@ export default function PageCMSModal({ isOpen, onClose, editingPage, triggerToas
                                                                     </div>
                                                                 </div>
 
-                                                                <div className={styles.adminForm} style={{ marginTop: '12px', border: 'none', padding: 0 }}>
-                                                                    <div className={styles.formRow}>
-                                                                        <div className={styles.formGroup}>
-                                                                            <label>Bölüm Başlığı *</label>
-                                                                            <input 
-                                                                                type="text"
+                                                                {expandedSectionIndex === sIdx && (
+                                                                    <div className={styles.adminForm} style={{ marginTop: '12px', border: 'none', padding: 0 }}>
+                                                                        <div className={styles.formRow}>
+                                                                            <div className={styles.formGroup}>
+                                                                                <label>Bölüm Başlığı *</label>
+                                                                                <input 
+                                                                                    type="text"
                                                                                 required
                                                                                 value={section.title || ''}
                                                                                 onChange={(e) => handleCustomSectionChange(sIdx, 'title', e.target.value)}
@@ -1453,7 +2170,9 @@ export default function PageCMSModal({ isOpen, onClose, editingPage, triggerToas
 
                                                                     <div className={styles.formGroup}>
                                                                         <label>Bölüm Detaylı İçeriği / Açıklaması *</label>
+                                                                        {renderToolbar(`custom-section-content-${sIdx}`, `customSections[${sIdx}].content`)}
                                                                         <textarea 
+                                                                            id={`custom-section-content-${sIdx}`}
                                                                             required
                                                                             value={section.content || ''}
                                                                             onChange={(e) => handleCustomSectionChange(sIdx, 'content', e.target.value)}
@@ -1462,9 +2181,10 @@ export default function PageCMSModal({ isOpen, onClose, editingPage, triggerToas
                                                                             placeholder="Bu bölüme ait tüm tanıtım veya kampanya yazılarını kurumsal olarak detaylandırın..."
                                                                         />
                                                                     </div>
-                                                                </div>
+                                                                    </div>
+                                                                )}
                                                             </div>
-                                                        ))}
+                                                        ))}`
                                                     </div>
 
                                                     <button 
@@ -1512,6 +2232,7 @@ export default function PageCMSModal({ isOpen, onClose, editingPage, triggerToas
 
                                             <div className={styles.formGroup}>
                                                 <label htmlFor="about-text">Kurumsal Hakkımızda Metni *</label>
+                                                {renderToolbar('about-text', 'aboutText')}
                                                 <textarea 
                                                     id="about-text"
                                                     required
@@ -1525,6 +2246,7 @@ export default function PageCMSModal({ isOpen, onClose, editingPage, triggerToas
                                             <div className={styles.formRow}>
                                                 <div className={styles.formGroup}>
                                                     <label htmlFor="about-vision">Vizyonumuz *</label>
+                                                    {renderToolbar('about-vision', 'aboutVision')}
                                                     <textarea 
                                                         id="about-vision"
                                                         required
@@ -1536,6 +2258,7 @@ export default function PageCMSModal({ isOpen, onClose, editingPage, triggerToas
                                                 </div>
                                                 <div className={styles.formGroup}>
                                                     <label htmlFor="about-mission">Misyonumuz *</label>
+                                                    {renderToolbar('about-mission', 'aboutMission')}
                                                     <textarea 
                                                         id="about-mission"
                                                         required
@@ -1727,7 +2450,9 @@ export default function PageCMSModal({ isOpen, onClose, editingPage, triggerToas
 
                                                                 <div className={styles.formGroup}>
                                                                     <label>Bölüm Detaylı İçeriği / Açıklaması *</label>
+                                                                    {renderToolbar(`about-section-content-${sIdx}`, `customSections[${sIdx}].content`)}
                                                                     <textarea 
+                                                                        id={`about-section-content-${sIdx}`}
                                                                         required
                                                                         value={section.content || ''}
                                                                         onChange={(e) => handleCustomSectionChange(sIdx, 'content', e.target.value)}
@@ -1893,7 +2618,9 @@ export default function PageCMSModal({ isOpen, onClose, editingPage, triggerToas
                                                             </div>
                                                             <div className={styles.formGroup}>
                                                                 <label>Cevap Metni *</label>
+                                                                {renderToolbar(`faq-answer-${index}`, `faqs[${index}].a`)}
                                                                 <textarea 
+                                                                    id={`faq-answer-${index}`}
                                                                     required
                                                                     value={faq.a}
                                                                     onChange={(e) => handleFaqItemChange(index, 'a', e.target.value)}

@@ -22,7 +22,8 @@ export default function AltKategoriModal({ isOpen, onClose, editingAltKategori, 
         description: '',
         kurumSlugs: [] as string[],
         order: 999,
-        status: 'active' as 'active' | 'passive'
+        status: 'active' as 'active' | 'passive',
+        showOnHomepage: false
     })
 
     // Sync form state when modal opens/changes
@@ -34,7 +35,8 @@ export default function AltKategoriModal({ isOpen, onClose, editingAltKategori, 
                 description: editingAltKategori.description || '',
                 kurumSlugs: editingAltKategori.kurumSlugs || [],
                 order: editingAltKategori.order !== undefined ? editingAltKategori.order : 999,
-                status: editingAltKategori.status || 'active'
+                status: editingAltKategori.status || 'active',
+                showOnHomepage: editingAltKategori.showOnHomepage !== undefined ? editingAltKategori.showOnHomepage : false
             })
             setIsSlugPristine(false)
         } else {
@@ -44,7 +46,8 @@ export default function AltKategoriModal({ isOpen, onClose, editingAltKategori, 
                 description: '',
                 kurumSlugs: initialKurumSlug ? [initialKurumSlug] : [],
                 order: 999,
-                status: 'active'
+                status: 'active',
+                showOnHomepage: false
             })
             setIsSlugPristine(true)
         }
@@ -116,7 +119,8 @@ export default function AltKategoriModal({ isOpen, onClose, editingAltKategori, 
             description: catForm.description.trim(),
             kurumSlugs: catForm.kurumSlugs,
             order: catForm.order,
-            status: catForm.status
+            status: catForm.status,
+            showOnHomepage: catForm.showOnHomepage
         }
 
         if (editingAltKategori) {
@@ -246,6 +250,19 @@ export default function AltKategoriModal({ isOpen, onClose, editingAltKategori, 
                                         <option value="passive">Pasif (Gizli)</option>
                                     </select>
                                 </div>
+                            </div>
+
+                            <div className={styles.formGroup} style={{ flexDirection: 'row', alignItems: 'center', gap: '8px', cursor: 'pointer', padding: '12px 16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
+                                <input 
+                                    id="cat-showOnHomepage"
+                                    type="checkbox" 
+                                    checked={catForm.showOnHomepage}
+                                    onChange={(e) => setCatForm({ ...catForm, showOnHomepage: e.target.checked })}
+                                    style={{ width: '16px', height: '16px', cursor: 'pointer', margin: 0 }}
+                                />
+                                <label htmlFor="cat-showOnHomepage" style={{ fontSize: '13px', fontWeight: '700', color: '#334155', cursor: 'pointer', margin: 0 }}>
+                                    Ana Sayfada Öne Çıkar (Popüler Sınav Grupları sekmesinde gösterilir)
+                                </label>
                             </div>
 
                             <div className={styles.formGroup}>

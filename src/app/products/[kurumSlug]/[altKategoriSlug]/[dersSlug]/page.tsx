@@ -38,6 +38,7 @@ export default function DersDetailPage() {
 
     // Related products from same subcategory
     const relatedProducts = products
+        .filter(p => p.status !== 'passive')
         .filter(p => 
             (p.kurumSlug === kurumSlug || (p.kurumSlugs && p.kurumSlugs.includes(kurumSlug))) && 
             (p.altKategoriSlug === altKategoriSlug || (p.altKategoriSlugs && p.altKategoriSlugs.includes(altKategoriSlug))) && 
@@ -75,11 +76,11 @@ export default function DersDetailPage() {
         return () => window.removeEventListener('scroll', handleScroll)
     }, [])
 
-    if (!product || !kurum) {
+    if (!product || !kurum || product.status === 'passive') {
         return (
             <div className="container section" style={{ textAlign: 'center', padding: '100px 0' }}>
                 <h2>Ders Bulunamadı</h2>
-                <p>Aradığınız ders mevcut değil.</p>
+                <p>Aradığınız ders mevcut değil ya da yayından kaldırılmış.</p>
                 <Link href={`/products/${kurumSlug}`} className="btn btn-primary" style={{ marginTop: '20px', display: 'inline-block' }}>
                     Kuruma Dön
                 </Link>

@@ -2,20 +2,24 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: calc(100vh - 140px);
-    /* Adjust for header/footer */
-    background-color: var(--bg-surface-secondary);
-    padding: var(--space-xl) var(--space-md);
+    min-height: calc(100vh - 120px);
+    background: radial-gradient(circle at top left, rgba(99, 102, 241, 0.04) 0%, transparent 40%),
+                radial-gradient(circle at bottom right, rgba(37, 99, 235, 0.04) 0%, transparent 40%),
+                var(--bg-surface-secondary);
+    padding: var(--space-2xl) var(--space-md);
 }
 
 .authCard {
     width: 100%;
-    max-width: 450px;
+    max-width: 460px;
     background-color: var(--bg-surface);
     padding: var(--space-2xl);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-lg);
+    border-radius: 16px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.02),
+                0 8px 16px -6px rgba(0, 0, 0, 0.02),
+                0 0 0 1px rgba(0, 0, 0, 0.04);
     border: 1px solid var(--border-subtle);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .logoWrapper {
@@ -29,14 +33,17 @@
 }
 
 .authCard h2 {
-    font-size: var(--text-2xl);
-    margin-bottom: var(--space-xs);
+    font-size: 24px;
+    font-weight: 800;
+    margin-bottom: 6px;
     color: var(--text-main);
+    letter-spacing: -0.02em;
 }
 
 .authCard p {
     color: var(--text-secondary);
-    font-size: var(--text-sm);
+    font-size: 13px;
+    margin: 0;
 }
 
 .form {
@@ -52,8 +59,8 @@
 }
 
 .formGroup label {
-    font-size: var(--text-sm);
-    font-weight: var(--font-medium);
+    font-size: 13px;
+    font-weight: 700;
     color: var(--text-main);
 }
 
@@ -67,20 +74,29 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: var(--text-sm);
+    font-size: 13px;
 }
 
 .checkbox {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.checkbox input {
+    width: 15px;
+    height: 15px;
     cursor: pointer;
 }
 
 .link {
     color: var(--color-accent);
     text-decoration: none;
-    font-weight: var(--font-medium);
+    font-weight: 700;
 }
 
 .link:hover {
@@ -90,6 +106,8 @@
 .footer {
     margin-top: var(--space-xl);
     text-align: center;
-    font-size: var(--text-sm);
+    font-size: 13px;
     color: var(--text-secondary);
+    border-top: 1px solid var(--border-subtle);
+    padding-top: var(--space-lg);
 }

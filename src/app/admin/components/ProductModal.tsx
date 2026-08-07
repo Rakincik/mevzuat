@@ -34,6 +34,7 @@ export default function ProductModal({ isOpen, onClose, editingProduct, triggerT
     const [activeTab, setActiveTab] = useState<'general' | 'media' | 'faq' | 'coupons'>('general')
     const [isSlugPristine, setIsSlugPristine] = useState(true)
     const [selectedAltCategoryOption, setSelectedAltCategoryOption] = useState('new')
+    const [featureInput, setFeatureInput] = useState('')
 
     const [isAddingNewKurum, setIsAddingNewKurum] = useState(false)
     const [newKurumForm, setNewKurumForm] = useState({
@@ -105,6 +106,15 @@ export default function ProductModal({ isOpen, onClose, editingProduct, triggerT
         if (selectedSlugs.length === 0) return []
         return altKategoriler.filter(cat => 
             cat.kurumSlugs.some(slug => selectedSlugs.includes(slug))
+        )
+    }, [productForm.kurumSlug, productForm.kurumSlugs, altKategoriler])
+
+    // Get subcategories belonging to other institutions
+    const otherAltCategories = useMemo(() => {
+        const selectedSlugs = productForm.kurumSlugs.length > 0 ? productForm.kurumSlugs : [productForm.kurumSlug].filter(Boolean)
+        if (selectedSlugs.length === 0) return altKategoriler
+        return altKategoriler.filter(cat => 
+            !cat.kurumSlugs.some(slug => selectedSlugs.includes(slug))
         )
     }, [productForm.kurumSlug, productForm.kurumSlugs, altKategoriler])
 
@@ -201,10 +211,75 @@ export default function ProductModal({ isOpen, onClose, editingProduct, triggerT
             const nextSlugs = alreadySelected
                 ? prev.kurumSlugs.filter(s => s !== slug)
                 : [...prev.kurumSlugs, slug]
+            
+            // Auto-filter subcategories that are no longer valid for any of the selected institutions
+            const nextAltKategoriSlugs = prev.altKategoriSlugs.filter(subcatSlug => {
+                const subcat = altKategoriler.find(cat => cat.slug === subcatSlug)
+                if (!subcat) return false
+                return subcat.kurumSlugs.some(s => nextSlugs.includes(s))
+            })
+
             return {
                 ...prev,
                 kurumSlugs: nextSlugs,
-                kurumSlug: nextSlugs[0] || ''
+                kurumSlug: nextSlugs[0] || '',
+                altKategoriSlugs: nextAltKategoriSlugs,
+                altKategoriSlug: nextAltKategoriSlugs[0] || ''
+            }
+        })
+    }
+
+    const handleSelectAllKurumlar = () => {
+        const allSlugs = kurumlar.map(k => k.slug)
+        setProductForm(prev => ({
+            ...prev,
+            kurumSlugs: allSlugs,
+            kurumSlug: allSlugs[0] || ''
+        }))
+    }
+
+    const handleClearKurumlar = () => {
+        setProductForm(prev => ({
+            ...prev,
+            kurumSlugs: [],
+            kurumSlug: '',
+            altKategoriSlugs: [],
+            altKategoriSlug: ''
+        }))
+    }
+
+    const handleSelectAllExistingAltCategories = () => {
+        const slugs = existingAltCategories.map(c => c.slug)
+        setProductForm(prev => {
+            const nextSlugs = Array.from(new Set([...prev.altKategoriSlugs, ...slugs]))
+            return {
+                ...prev,
+                altKategoriSlugs: nextSlugs,
+                altKategoriSlug: nextSlugs[0] || ''
+            }
+        })
+    }
+
+    const handleClearExistingAltCategories = () => {
+        const slugsToClear = existingAltCategories.map(c => c.slug)
+        setProductForm(prev => {
+            const nextSlugs = prev.altKategoriSlugs.filter(s => !slugsToClear.includes(s))
+            return {
+                ...prev,
+                altKategoriSlugs: nextSlugs,
+                altKategoriSlug: nextSlugs[0] || ''
+            }
+        })
+    }
+
+    const handleSelectAllOtherAltCategories = () => {
+        const slugs = otherAltCategories.map(c => c.slug)
+        setProductForm(prev => {
+            const nextSlugs = Array.from(new Set([...prev.altKategoriSlugs, ...slugs]))
+            return {
+                ...prev,
+                altKategoriSlugs: nextSlugs,
+                altKategoriSlug: nextSlugs[0] || ''
             }
         })
     }
@@ -221,6 +296,27 @@ export default function ProductModal({ isOpen, onClose, editingProduct, triggerT
                 altKategoriSlug: nextSlugs[0] || ''
             }
         })
+    }
+
+    const handleAddFeature = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            e.preventDefault()
+            const val = featureInput.trim()
+            if (val && !productForm.features.includes(val)) {
+                setProductForm(prev => ({
+                    ...prev,
+                    features: [...prev.features, val]
+                }))
+                setFeatureInput('')
+            }
+        }
+    }
+
+    const handleRemoveFeature = (val: string) => {
+        setProductForm(prev => ({
+            ...prev,
+            features: prev.features.filter(f => f !== val)
+        }))
     }
 
     if (!isOpen) return null
@@ -480,6 +576,12 @@ export default function ProductModal({ isOpen, onClose, editingProduct, triggerT
         if (productForm.kurumSlugs.length === 0 && !productForm.kurumSlug && (!isAddingNewKurum || !newKurumForm.name.trim())) {
             setActiveTab('general')
             alert('Lütfen en az bir Bakanlık / Üst Kurum seçin veya yeni bir kurum ekleyin.')
+            return
+        }
+
+        if (productForm.altKategoriSlugs.length === 0 && !productForm.altKategoriSlug) {
+            setActiveTab('general')
+            alert('Lütfen en az bir Alt Kategori / Sınav Grubu seçin.')
             return
         }
 
@@ -854,7 +956,26 @@ export default function ProductModal({ isOpen, onClose, editingProduct, triggerT
 
                                 <div className={styles.formRow} style={{ gap: '24px' }}>
                                     <div className={styles.formGroup} style={{ gridColumn: 'span 2' }}>
-                                        <label style={{ fontSize: '13px', fontWeight: '700', color: '#334155', marginBottom: '10px', display: 'block' }}>Bakanlık / Üst Kurum * (Birden fazla seçebilirsiniz)</label>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                            <label style={{ fontSize: '13px', fontWeight: '700', color: '#334155', margin: '0' }}>Bakanlık / Üst Kurum * (Birden fazla seçebilirsiniz)</label>
+                                            <div style={{ display: 'flex', gap: '8px' }}>
+                                                <button 
+                                                    type="button" 
+                                                    onClick={handleSelectAllKurumlar} 
+                                                    style={{ border: 'none', background: 'none', color: '#3b82f6', fontSize: '11px', fontWeight: '700', cursor: 'pointer', padding: '0' }}
+                                                >
+                                                    Tümünü Seç
+                                                </button>
+                                                <span style={{ color: '#cbd5e1', fontSize: '11px' }}>|</span>
+                                                <button 
+                                                    type="button" 
+                                                    onClick={handleClearKurumlar} 
+                                                    style={{ border: 'none', background: 'none', color: '#ef4444', fontSize: '11px', fontWeight: '700', cursor: 'pointer', padding: '0' }}
+                                                >
+                                                    Seçimleri Temizle
+                                                </button>
+                                            </div>
+                                        </div>
                                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '12px', background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                                             {kurumlar.map(k => {
                                                 const isSelected = productForm.kurumSlugs.includes(k.slug)
@@ -975,42 +1096,114 @@ export default function ProductModal({ isOpen, onClose, editingProduct, triggerT
                                 <div className={styles.formRow} style={{ gap: '24px' }}>
                                     <div className={styles.formGroup} style={{ gridColumn: 'span 2' }}>
                                         <label style={{ fontSize: '13px', fontWeight: '700', color: '#334155', marginBottom: '10px', display: 'block' }}>Alt Kategori (Grup Sınıflandırması) * (Birden fazla seçebilirsiniz)</label>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                            {existingAltCategories.length === 0 ? (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                            {altKategoriler.length === 0 ? (
                                                 <div style={{ background: '#fffbeb', border: '1px solid #fef3c7', padding: '14px 18px', borderRadius: '8px', fontSize: '13px', color: '#b45309', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '600' }}>
                                                     <Info size={16} style={{ color: '#d97706' }} />
-                                                    <span>Seçilen üst kurum(lar) için henüz tanımlı bir alt kategori bulunmuyor. Lütfen <strong>Kategori Yönetimi</strong> panelinden ekleyin.</span>
+                                                    <span>Sistemde henüz tanımlı bir alt kategori bulunmuyor. Lütfen <strong>Kategori Yönetimi</strong> panelinden ekleyin.</span>
                                                 </div>
                                             ) : (
-                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '10px', background: '#f5f3ff', padding: '16px', borderRadius: '12px', border: '1px solid #dcd7ff' }}>
-                                                    {existingAltCategories.map(c => {
-                                                        const isSelected = productForm.altKategoriSlugs.includes(c.slug)
-                                                        return (
-                                                            <label 
-                                                                key={c.slug} 
-                                                                style={{ 
-                                                                    display: 'flex', 
-                                                                    alignItems: 'center', 
-                                                                    gap: '8px', 
-                                                                    padding: '10px 12px', 
-                                                                    background: isSelected ? '#e0e7ff' : 'white', 
-                                                                    border: isSelected ? '2px solid #6366f1' : '1px solid #cbd5e1', 
-                                                                    borderRadius: '8px', 
-                                                                    cursor: 'pointer',
-                                                                    transition: 'all 0.2s ease'
-                                                                }}
-                                                            >
-                                                                <input 
-                                                                    type="checkbox" 
-                                                                    checked={isSelected}
-                                                                    onChange={() => handleAltCategoryToggle(c.slug)}
-                                                                    style={{ width: '15px', height: '15px', cursor: 'pointer' }}
-                                                                />
-                                                                <span style={{ fontSize: '12px', fontWeight: '700', color: '#312e81' }}>📂 {c.name}</span>
-                                                            </label>
-                                                        )
-                                                    })}
-                                                </div>
+                                                <>
+                                                    {existingAltCategories.length > 0 && (
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                                <span style={{ fontSize: '11px', fontWeight: '800', color: '#1e1b4b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>📌 SEÇİLİ KURUMLARA AİT ALT KATEGORİLER</span>
+                                                                <div style={{ display: 'flex', gap: '8px' }}>
+                                                                    <button 
+                                                                        type="button" 
+                                                                        onClick={handleSelectAllExistingAltCategories} 
+                                                                        style={{ border: 'none', background: 'none', color: '#6366f1', fontSize: '10px', fontWeight: '700', cursor: 'pointer', padding: '0' }}
+                                                                    >
+                                                                        Tümünü Seç
+                                                                    </button>
+                                                                    <span style={{ color: '#cbd5e1', fontSize: '10px' }}>|</span>
+                                                                    <button 
+                                                                        type="button" 
+                                                                        onClick={handleClearExistingAltCategories} 
+                                                                        style={{ border: 'none', background: 'none', color: '#ef4444', fontSize: '10px', fontWeight: '700', cursor: 'pointer', padding: '0' }}
+                                                                    >
+                                                                        Seçimleri Temizle
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '10px', background: '#f5f3ff', padding: '16px', borderRadius: '12px', border: '1px solid #dcd7ff' }}>
+                                                                {existingAltCategories.map(c => {
+                                                                    const isSelected = productForm.altKategoriSlugs.includes(c.slug)
+                                                                    return (
+                                                                        <label 
+                                                                            key={c.slug} 
+                                                                            style={{ 
+                                                                                display: 'flex', 
+                                                                                alignItems: 'center', 
+                                                                                gap: '8px', 
+                                                                                padding: '10px 12px', 
+                                                                                background: isSelected ? '#e0e7ff' : 'white', 
+                                                                                border: isSelected ? '2px solid #6366f1' : '1px solid #cbd5e1', 
+                                                                                borderRadius: '8px', 
+                                                                                cursor: 'pointer',
+                                                                                transition: 'all 0.2s ease'
+                                                                            }}
+                                                                        >
+                                                                            <input 
+                                                                                type="checkbox" 
+                                                                                checked={isSelected}
+                                                                                onChange={() => handleAltCategoryToggle(c.slug)}
+                                                                                style={{ width: '15px', height: '15px', cursor: 'pointer' }}
+                                                                            />
+                                                                            <span style={{ fontSize: '12px', fontWeight: '700', color: '#312e81' }}>📂 {c.name}</span>
+                                                                        </label>
+                                                                    )
+                                                                })}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {otherAltCategories.length > 0 && (
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                                <span style={{ fontSize: '11px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                                    🔍 DİĞER KURUMLARIN ALT KATEGORİLERİ <span style={{ fontSize: '10px', fontWeight: '500', color: '#94a3b8', textTransform: 'none' }}>(Seçildiğinde bu kuruma da otomatik bağlanır)</span>
+                                                                </span>
+                                                                <button 
+                                                                    type="button" 
+                                                                    onClick={handleSelectAllOtherAltCategories} 
+                                                                    style={{ border: 'none', background: 'none', color: '#475569', fontSize: '10px', fontWeight: '700', cursor: 'pointer', padding: '0' }}
+                                                                >
+                                                                    Tümünü Seç (Diğerleri)
+                                                                </button>
+                                                            </div>
+                                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '10px', background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                                                {otherAltCategories.map(c => {
+                                                                    const isSelected = productForm.altKategoriSlugs.includes(c.slug)
+                                                                    return (
+                                                                        <label 
+                                                                            key={c.slug} 
+                                                                            style={{ 
+                                                                                display: 'flex', 
+                                                                                alignItems: 'center', 
+                                                                                gap: '8px', 
+                                                                                padding: '10px 12px', 
+                                                                                background: isSelected ? '#eff6ff' : 'white', 
+                                                                                border: isSelected ? '2px solid #3b82f6' : '1px solid #e2e8f0', 
+                                                                                borderRadius: '8px', 
+                                                                                cursor: 'pointer',
+                                                                                transition: 'all 0.2s ease'
+                                                                            }}
+                                                                        >
+                                                                            <input 
+                                                                                type="checkbox" 
+                                                                                checked={isSelected}
+                                                                                onChange={() => handleAltCategoryToggle(c.slug)}
+                                                                                style={{ width: '15px', height: '15px', cursor: 'pointer' }}
+                                                                            />
+                                                                            <span style={{ fontSize: '12px', fontWeight: '700', color: isSelected ? '#1e3a8a' : '#0f172a' }}>📂 {c.name}</span>
+                                                                        </label>
+                                                                    )
+                                                                })}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </>
                                             )}
                                         </div>
                                     </div>
@@ -1194,54 +1387,58 @@ export default function ProductModal({ isOpen, onClose, editingProduct, triggerT
                                         </div>
                                     </div>
                                 </div>
+                                
                                 <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '20px' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
                                         <div>
                                             <h3 style={{ fontSize: '14px', fontWeight: '800', color: '#1e293b', margin: '0' }}>✅ DERS TANITIM ÖZELLİKLERİ (YEŞİL ONAYLI LİSTE)</h3>
-                                            <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '500' }}>Sitede yeşil tik işaretiyle listelenecek ders özelliklerini düzenleyin.</span>
+                                            <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '500' }}>Sitede yeşil tik işaretiyle listelenecek ders özelliklerini yazıp Enter'layarak ekleyin.</span>
                                         </div>
-                                        <button 
-                                            type="button" 
-                                            onClick={() => setProductForm(prev => ({ ...prev, features: [...prev.features, ''] }))}
-                                            className="btn btn-outline btn-sm"
-                                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', borderColor: '#10b981', color: '#10b981', fontWeight: 'bold' }}
-                                        >
-                                            <Plus size={14} />
-                                            <span>Özellik Ekle</span>
-                                        </button>
                                     </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
                                         {productForm.features.map((feature, idx) => (
-                                            <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                                <span style={{ color: '#10b981', fontSize: '14px', fontWeight: 'bold' }}>✓</span>
-                                                <input 
-                                                    type="text"
-                                                    value={feature}
-                                                    onChange={(e) => {
-                                                        const nextFeatures = [...productForm.features]
-                                                        nextFeatures[idx] = e.target.value
-                                                        setProductForm(prev => ({ ...prev, features: nextFeatures }))
-                                                    }}
-                                                    className={styles.formInput}
-                                                    style={{ padding: '8px 12px', fontSize: '13px', flexGrow: 1 }}
-                                                    placeholder="Örn: Tamamı Video Çözümlü"
-                                                />
+                                            <span 
+                                                key={idx} 
+                                                style={{ 
+                                                    display: 'inline-flex', 
+                                                    alignItems: 'center', 
+                                                    gap: '6px', 
+                                                    padding: '6px 12px', 
+                                                    background: '#ecfdf5', 
+                                                    color: '#065f46', 
+                                                    border: '1px solid #a7f3d0', 
+                                                    borderRadius: '9999px', 
+                                                    fontSize: '12px', 
+                                                    fontWeight: '700' 
+                                                }}
+                                            >
+                                                <span>✓ {feature}</span>
                                                 <button
                                                     type="button"
-                                                    onClick={() => {
-                                                        setProductForm(prev => ({ ...prev, features: prev.features.filter((_, i) => i !== idx) }))
-                                                    }}
-                                                    style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}
+                                                    onClick={() => handleRemoveFeature(feature)}
+                                                    style={{ border: 'none', background: 'none', color: '#047857', cursor: 'pointer', padding: '0', display: 'flex', alignItems: 'center' }}
                                                 >
-                                                    <X size={16} />
+                                                    <X size={12} />
                                                 </button>
-                                            </div>
+                                            </span>
                                         ))}
-                                        {productForm.features.length === 0 && (
-                                            <div style={{ border: '2px dashed #cbd5e1', borderRadius: '12px', padding: '16px', textAlign: 'center', color: '#94a3b8', fontSize: '12px' }}>
-                                                Özellik tanımlanmamış. Boş bırakırsanız varsayılan liste gösterilecektir.
-                                            </div>
-                                        )}
+                                        <input 
+                                            type="text"
+                                            value={featureInput}
+                                            onChange={(e) => setFeatureInput(e.target.value)}
+                                            onKeyDown={handleAddFeature}
+                                            placeholder="Yeni özellik yazıp Enter'a basın..."
+                                            style={{ 
+                                                border: 'none', 
+                                                outline: 'none', 
+                                                background: 'transparent', 
+                                                fontSize: '12px', 
+                                                fontWeight: '600', 
+                                                flexGrow: 1, 
+                                                minWidth: '200px',
+                                                padding: '4px'
+                                            }}
+                                        />
                                     </div>
                                 </div>
 

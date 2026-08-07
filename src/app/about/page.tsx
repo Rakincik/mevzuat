@@ -77,13 +77,9 @@ export default function AboutPage() {
                         <div className={styles.missionContent}>
                             <h2 className={styles.sectionTitle} style={{ textAlign: 'left' }}>Vizyon & Misyon</h2>
                             <h3>Vizyonumuz</h3>
-                            <p>
-                                {aboutVision}
-                            </p>
+                            <p dangerouslySetInnerHTML={{ __html: aboutVision || '' }} />
                             <h3>Misyonumuz</h3>
-                            <p>
-                                {aboutMission}
-                            </p>
+                            <p dangerouslySetInnerHTML={{ __html: aboutMission || '' }} />
                         </div>
                         <div className={styles.missionImage} style={{ padding: '2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-surface)' }}>
                             <Image

@@ -1,8 +1,8 @@
 'use client'
 
 import React from 'react'
-import { X, User, Mail, Phone, Calendar, MessageCircle, Printer } from 'lucide-react'
-import { Order } from '@/context/AppContext'
+import { X, User, Mail, Phone, Calendar, MessageCircle, Printer, CreditCard, FileText, CheckCircle2, XCircle } from 'lucide-react'
+import { useApp, Order } from '@/context/AppContext'
 import styles from '../page.module.css'
 
 interface OrderModalProps {
@@ -11,6 +11,7 @@ interface OrderModalProps {
 }
 
 export default function OrderModal({ order, onClose }: OrderModalProps) {
+    const { updateOrderStatus, triggerConfirm } = useApp()
     if (!order) return null
 
     const handlePrint = () => {
@@ -86,6 +87,15 @@ export default function OrderModal({ order, onClose }: OrderModalProps) {
                                 <span>{new Date(order.createdAt).toLocaleDateString('tr-TR')} {new Date(order.createdAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span>
                             </div>
                         </div>
+                        <div className={styles.orderDetailItem}>
+                            <div className={styles.orderDetailItemLabel}>Ödeme Yöntemi</div>
+                            <div className={styles.orderDetailItemVal} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <CreditCard size={12} color="#64748b" />
+                                <span style={{ fontWeight: 'bold', color: order.paymentMethod === 'havale' ? '#16a34a' : '#2563eb' }}>
+                                    {order.paymentMethod === 'havale' ? 'EFT / Banka Havalesi' : 'Kredi Kartı'}
+                                </span>
+                            </div>
+                        </div>
                     </div>
 
                     <div style={{ marginTop: '20px' }}>
@@ -120,8 +130,75 @@ export default function OrderModal({ order, onClose }: OrderModalProps) {
                             <span>{order.total.toLocaleString('tr-TR')} ₺</span>
                         </div>
                     </div>
+
+                    {order.paymentMethod === 'havale' && (
+                        <div style={{ marginTop: '20px', background: '#f0fdf4', padding: '16px', borderRadius: '8px', border: '1.5px dashed #10b981' }}>
+                            <h4 style={{ fontSize: '13px', fontWeight: 'bold', color: '#14532d', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <FileText size={16} />
+                                <span>Ödeme Dekontu (Öğrenci Yüklemesi)</span>
+                            </h4>
+                            {order.receipt ? (
+                                <div>
+                                    {order.receipt.startsWith('data:application/pdf') ? (
+                                        <a 
+                                            href={order.receipt} 
+                                            download={`dekont-${order.id}.pdf`}
+                                            style={{
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '8px',
+                                                padding: '10px 16px',
+                                                background: 'white',
+                                                border: '1px solid #bbf7d0',
+                                                borderRadius: '6px',
+                                                color: '#15803d',
+                                                fontSize: '13px',
+                                                fontWeight: 'bold',
+                                                textDecoration: 'none',
+                                                boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+                                            }}
+                                        >
+                                            📄 PDF Dekontu İndir
+                                        </a>
+                                    ) : (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                            <div style={{ maxWidth: '100%', maxHeight: '240px', overflow: 'hidden', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
+                                                <img 
+                                                    src={order.receipt} 
+                                                    alt="Dekont" 
+                                                    style={{ width: '100%', height: 'auto', objectFit: 'contain', cursor: 'pointer' }}
+                                                    onClick={() => {
+                                                        const win = window.open();
+                                                        if (win) win.document.write(`<img src="${order.receipt}" style="max-width:100%; height:auto;" />`);
+                                                    }}
+                                                    title="Tam boyutta görmek için tıklayın"
+                                                />
+                                            </div>
+                                            <a 
+                                                href={order.receipt} 
+                                                download={`dekont-${order.id}.png`}
+                                                style={{
+                                                    alignSelf: 'flex-start',
+                                                    fontSize: '12px',
+                                                    color: '#15803d',
+                                                    fontWeight: 'bold',
+                                                    textDecoration: 'underline'
+                                                }}
+                                            >
+                                                Görsel Dekontu Bilgisayara İndir
+                                            </a>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <p style={{ fontSize: '12px', color: '#b45309', fontWeight: 'bold' }}>
+                                    ⚠ Dekont yüklenmemiş!
+                                </p>
+                            )}
+                        </div>
+                    )}
                 </div>
-                <div className={styles.modalFooter} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div className={styles.modalFooter} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                     <button 
                         type="button" 
                         className={styles.btnCancel} 
@@ -129,11 +206,58 @@ export default function OrderModal({ order, onClose }: OrderModalProps) {
                         style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', margin: 0 }}
                     >
                         <Printer size={15} />
-                        <span>Siparişi Yazdır</span>
+                        <span>Yazdır</span>
                     </button>
-                    <button type="button" className="btn btn-primary" onClick={onClose} style={{ marginTop: 0 }}>
-                        TAMAM
-                    </button>
+                    
+                    {order.status === 'PENDING' ? (
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                            <button 
+                                type="button" 
+                                className="btn btn-outline" 
+                                style={{ color: '#ef4444', borderColor: '#fca5a5', marginTop: 0, display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', padding: '6px 12px' }}
+                                onClick={() => {
+                                    triggerConfirm({
+                                        title: 'Siparişi İptal Et',
+                                        message: 'Bu siparişi iptal etmek istediğinize emin misiniz?',
+                                        confirmText: 'Evet, İptal Et',
+                                        cancelText: 'Vazgeç',
+                                        isDangerous: true,
+                                        onConfirm: () => {
+                                            updateOrderStatus(order.id, 'CANCELLED')
+                                            onClose()
+                                        }
+                                    })
+                                }}
+                            >
+                                <XCircle size={14} />
+                                <span>Reddet / İptal Et</span>
+                            </button>
+                            <button 
+                                type="button" 
+                                className="btn btn-primary" 
+                                style={{ background: '#10b981', borderColor: '#10b981', marginTop: 0, display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', padding: '6px 12px' }}
+                                onClick={() => {
+                                    triggerConfirm({
+                                        title: 'Ödemeyi Onayla',
+                                        message: 'Bu siparişin ödemesini onaylamak ve eğitimleri aktif etmek istediğinize emin misiniz?',
+                                        confirmText: 'Evet, Onayla',
+                                        cancelText: 'Vazgeç',
+                                        onConfirm: () => {
+                                            updateOrderStatus(order.id, 'PAID')
+                                            onClose()
+                                        }
+                                    })
+                                }}
+                            >
+                                <CheckCircle2 size={14} />
+                                <span>Ödemeyi Onayla</span>
+                            </button>
+                        </div>
+                    ) : (
+                        <button type="button" className="btn btn-primary" onClick={onClose} style={{ marginTop: 0 }}>
+                            KAPAT
+                        </button>
+                    )}
                 </div>
             </div>
 

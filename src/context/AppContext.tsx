@@ -23,6 +23,7 @@ export interface AltKategori {
     kurumSlugs: string[]
     order?: number
     status?: 'active' | 'passive'
+    showOnHomepage?: boolean
 }
 
 export interface AppSettings {
@@ -65,6 +66,8 @@ export interface Order {
     tax: number
     total: number
     status: 'PENDING' | 'PAID' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED'
+    paymentMethod?: 'havale' | 'cc'
+    receipt?: string
     createdAt: string
 }
 
@@ -120,6 +123,9 @@ export interface EditablePage {
     announcementImage?: string
     slides?: { id: string; title: string; subtitle: string; cta: string; link: string; bgClass?: string; image?: string; icon: string; iconColor?: string }[]
     ctaPanels?: { title: string; subtitle: string; href: string; icon: string; bgGradient?: string }[]
+    activeSections?: Record<string, boolean>
+    featuredSubcatOrders?: string[]
+    sectionOrder?: string[]
     seoTitle?: string
     seoDescription?: string
     status: 'published' | 'draft'
@@ -149,6 +155,7 @@ export interface AppContextType {
     updateKurum: (id: string, kurum: Partial<Kurum>) => void
     deleteKurum: (id: string) => void
     reorderKurumlar: (newKurumlarList: Kurum[]) => void
+    reorderAltKategoriler: (newAltKategorilerList: AltKategori[]) => void
     addAltKategori: (cat: AltKategori) => void
     updateAltKategori: (id: string, cat: Partial<AltKategori>) => void
     deleteAltKategori: (id: string) => void
@@ -162,6 +169,7 @@ export interface AppContextType {
     }) => void
     updateSettings: (settings: Partial<AppSettings>) => void
     toggleFeatured: (id: string) => void
+    updateFeaturedIds: (ids: string[]) => void
     resetAllData: () => void
     addOrder: (order: Order) => void
     updateOrderStatus: (id: string, status: Order['status']) => void
@@ -197,11 +205,7 @@ const defaultSettings: AppSettings = {
     bankIban2: "TR34 0006 2000 0000 0000 0000 02"
 }
 
-const defaultCoupons: Coupon[] = [
-    { id: 'c1', code: 'BOMBASTIK20', discountType: 'percentage', discountValue: 20, maxUses: 100, usedCount: 15, description: 'Tüm sepetlerde %20 indirim' },
-    { id: 'c2', code: 'INDIRIM10', discountType: 'percentage', discountValue: 10, maxUses: 200, usedCount: 45, description: 'Tüm sepetlerde %10 indirim' },
-    { id: 'c3', code: 'MEVZUST500', discountType: 'fixed', discountValue: 500, maxUses: 50, usedCount: 8, description: 'Tüm sepetlerde 500 ₺ sabit indirim' }
-]
+const defaultCoupons: Coupon[] = []
 
 const defaultPages: EditablePage[] = [
     {
@@ -260,6 +264,7 @@ const defaultPages: EditablePage[] = [
             }
         ],
         customSections: [],
+        sectionOrder: ['slider', 'featured', 'subcategories', 'yapboz', 'about', 'kurumlar'],
         status: 'published',
         createdAt: '2026-05-23T00:00:00.000Z'
     },
@@ -853,11 +858,71 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
     }
 
+    const syncSubcategoryRelations = (pList: Product[], currentAltCats: AltKategori[]) => {
+        const map = new Map<string, { name: string; slugs: Set<string> }>()
+        
+        pList.forEach(p => {
+            const pKurumSlugs = p.kurumSlugs || [p.kurumSlug].filter(Boolean)
+            const pAltKategoriSlugs = p.altKategoriSlugs || [p.altKategoriSlug].filter(Boolean)
+            const pAltKategoriNames = p.altKategoriNames || [p.altKategoriName].filter(Boolean)
+            
+            pAltKategoriSlugs.forEach((subcatSlug, idx) => {
+                const subcatName = pAltKategoriNames[idx] || p.altKategoriName || 'Mevzuat Konu Anlatımı'
+                let entry = map.get(subcatSlug)
+                if (!entry) {
+                    entry = { name: subcatName, slugs: new Set<string>() }
+                    map.set(subcatSlug, entry)
+                }
+                pKurumSlugs.forEach(kSlug => entry!.slugs.add(kSlug))
+            })
+        })
+        
+        let changed = false
+        // Update existing categories if they have new kurumSlug relations derived from products
+        const nextAltKategoriler = currentAltCats.map(cat => {
+            const entry = map.get(cat.slug)
+            if (entry) {
+                const mergedSlugs = Array.from(new Set([...cat.kurumSlugs, ...Array.from(entry.slugs)]))
+                if (mergedSlugs.length !== cat.kurumSlugs.length || mergedSlugs.some(s => !cat.kurumSlugs.includes(s))) {
+                    changed = true
+                    return {
+                        ...cat,
+                        kurumSlugs: mergedSlugs
+                    }
+                }
+            }
+            return cat
+        })
+        
+        map.forEach((entry, subcatSlug) => {
+            const existingIdx = nextAltKategoriler.findIndex(cat => cat.slug === subcatSlug)
+            if (existingIdx === -1) {
+                const newCat: AltKategori = {
+                    id: 'altcat_' + Math.random().toString(36).substr(2, 9),
+                    name: entry.name,
+                    slug: subcatSlug,
+                    description: `${entry.name} sınav hazırlık dersleri.`,
+                    kurumSlugs: Array.from(entry.slugs),
+                    order: nextAltKategoriler.length + 1,
+                    status: 'active'
+                }
+                nextAltKategoriler.push(newCat)
+                changed = true
+            }
+        })
+        
+        if (changed) {
+            setAltKategoriler(nextAltKategoriler)
+            saveState('app_alt_kategoriler', nextAltKategoriler)
+        }
+    }
+
     const addProduct = (product: Product) => {
         const orderVal = product.order !== undefined ? product.order : products.length + 1
         const updated = resequenceProducts([...products, product], product.id, orderVal)
         setProducts(updated)
         safeSaveProducts(updated)
+        syncSubcategoryRelations(updated, altKategoriler)
     }
 
     const updateProduct = (id: string, updatedFields: Partial<Product>) => {
@@ -878,6 +943,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
         setProducts(updated)
         safeSaveProducts(updated)
+        syncSubcategoryRelations(updated, altKategoriler)
     }
 
     const updateMultipleProducts = (updates: { id: string; fields: Partial<Product> }[]) => {
@@ -888,6 +954,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const updated = resequenceProducts(updatedList)
         setProducts(updated)
         safeSaveProducts(updated)
+        syncSubcategoryRelations(updated, altKategoriler)
     }
 
     const deleteProduct = (id: string) => {
@@ -1104,6 +1171,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         saveState('featured_product_ids', updated)
     }
 
+    const updateFeaturedIds = (ids: string[]) => {
+        setFeaturedIds(ids)
+        saveState('featured_product_ids', ids)
+    }
+
     const resetAllData = async () => {
         localStorage.removeItem('app_products')
         localStorage.removeItem('app_kurumlar')
@@ -1229,6 +1301,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         saveState('app_kurumlar', newKurumlarList)
     }
 
+    const reorderAltKategoriler = (newAltKategorilerList: AltKategori[]) => {
+        setAltKategoriler(newAltKategorilerList)
+        saveState('app_alt_kategoriler', newAltKategorilerList)
+    }
+
     const bulkUpdateOrders = (ids: string[], fields: Partial<Order>) => {
         const updated = orders.map(o => ids.includes(o.id) ? { ...o, ...fields } : o)
         setOrders(updated)
@@ -1277,6 +1354,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             deleteAltKategori,
             updateSettings,
             toggleFeatured,
+            updateFeaturedIds,
             resetAllData,
             addOrder,
             updateOrderStatus,
@@ -1290,6 +1368,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             deletePage,
             triggerConfirm,
             reorderKurumlar,
+            reorderAltKategoriler,
             bulkUpdateOrders,
             bulkDeleteStudents,
             bulkDeleteProducts

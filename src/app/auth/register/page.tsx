@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import styles from './auth.module.css'
+import styles from '../login/auth.module.css'
 import Image from 'next/image'
 
 export default function RegisterPage() {
