@@ -9,6 +9,12 @@ export interface Kurum {
     icon: string // kept for fallback/compatibility
     color: string // accent color for UI
     productCount: number
+    order?: number
+    showOnHomepage?: boolean
+    status?: 'active' | 'passive'
+    image?: string
+    seoTitle?: string
+    seoDescription?: string
 }
 
 export const allKurumlar: Kurum[] = [
@@ -80,6 +86,7 @@ export interface AltKategori {
     slug: string
     description: string
     productCount: number
+    kurumSlugs?: string[]
 }
 
 // ==========================================
@@ -111,6 +118,11 @@ export interface Product {
     altKategoriSlugs?: string[]
     altKategoriNames?: string[]
     isFeatured?: boolean
+    status?: 'active' | 'passive'
+    showOnHomepage?: boolean
+    instructorName?: string
+    totalDuration?: string
+    categoryOrders?: Record<string, number>
     images?: string[]
     exclusiveCoupons?: string
     exclusiveCouponsList?: ProductCoupon[]
